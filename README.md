@@ -2,10 +2,10 @@
 
 # BOScoin Token Network
 
-Establish global BOS community
-Consensus Protocol Development Sandbox
-Provide community token exchange network 
-Consensus Algorithm Research and Development
+Establish global BOS community  
+Consensus Protocol Development Sandbox  
+Provide community token exchange network  
+Consensus Algorithm Research and Development  
 
 # stella-core
 
