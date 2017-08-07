@@ -34,6 +34,7 @@ class Work : public WorkParent
 {
 
   public:
+    static size_t const RETRY_NEVER = 0;
     static size_t const RETRY_ONCE = 1;
     static size_t const RETRY_A_FEW = 5;
     static size_t const RETRY_A_LOT = 32;
@@ -103,6 +104,7 @@ class Work : public WorkParent
     size_t mMaxRetries{RETRY_A_FEW};
     size_t mRetries{0};
     State mState{WORK_PENDING};
+    bool mScheduled {false};
 
     std::unique_ptr<VirtualTimer> mRetryTimer;
 
