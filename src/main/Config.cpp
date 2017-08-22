@@ -72,6 +72,12 @@ Config::Config() : NODE_SEED(SecretKey::random())
     INVARIANT_CHECK_BALANCE = false;
     INVARIANT_CHECK_ACCOUNT_SUBENTRY_COUNT = false;
     INVARIANT_CHECK_CACHE_CONSISTENT_WITH_DATABASE = false;
+    
+    // Ledger Manager Setting
+    BALANCE = 1000000000000000000;
+    BASE_FEE = 100;
+    BASE_RESERVE = 100000000;
+    MAX_TX_SET_SIZE = 100;
 }
 
 void
@@ -627,6 +633,59 @@ Config::load(std::string const& filename)
                 }
                 INVARIANT_CHECK_CACHE_CONSISTENT_WITH_DATABASE =
                     item.second->as<bool>()->value();
+            }
+            // Add Ledger Manager Settig
+            else if (item.first == "BALANCE")
+            {
+                if (!item.second->as<int64_t>())
+                {
+                    throw std::invalid_argument("invalid BALANCE");
+                }
+                int64_t f = item.second->as<int64_t>()->value();
+                if (f < 0 || f >= UINT32_MAX)
+                {
+                    throw std::invalid_argument("invalid BALANCE");
+                }
+                BALANCE = (uint32_t)f;
+            }
+            else if (item.first == "BASE_FEE")
+            {
+                if (!item.second->as<int64_t>())
+                {
+                    throw std::invalid_argument("invalid BASE_FEE");
+                }
+                int64_t f = item.second->as<int64_t>()->value();
+                if (f < 0 || f >= UINT32_MAX)
+                {
+                    throw std::invalid_argument("invalid BASE_FEE");
+                }
+                BASE_FEE = (uint32_t)f;
+            }
+            else if (item.first == "BASE_RESERVE")
+            {
+                if (!item.second->as<int64_t>())
+                {
+                    throw std::invalid_argument("invalid BASE_RESERVE");
+                }
+                int64_t f = item.second->as<int64_t>()->value();
+                if (f < 0 || f >= UINT32_MAX)
+                {
+                    throw std::invalid_argument("invalid BASE_RESERVE");
+                }
+                BASE_RESERVE = (uint32_t)f;
+            }
+            else if (item.first == "MAX_TX_SET_SIZE")
+            {
+                if (!item.second->as<int64_t>())
+                {
+                    throw std::invalid_argument("invalid MAX_TX_SET_SIZE");
+                }
+                int64_t f = item.second->as<int64_t>()->value();
+                if (f < 0 || f >= UINT32_MAX)
+                {
+                    throw std::invalid_argument("invalid MAX_TX_SET_SIZE");
+                }
+                MAX_TX_SET_SIZE = (uint32_t)f;
             }
             else
             {
