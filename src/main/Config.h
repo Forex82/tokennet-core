@@ -183,8 +183,8 @@ class Config : public std::enable_shared_from_this<Config>
 
     std::string NTP_SERVER; // ntp server used to check if time is valid on host
 
-    // Ledger Manager Setting
-    uint32_t BALANCE; 
+    // Ledger Manager config
+    uint32_t BALANCE;
     uint32_t BASE_FEE;
     uint32_t BASE_RESERVE;
     uint32_t MAX_TX_SET_SIZE;
