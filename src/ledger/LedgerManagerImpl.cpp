@@ -188,8 +188,36 @@ LedgerManagerImpl::startNewLedger(int64_t balance, uint32_t baseFee, uint32_t ba
 void
 LedgerManagerImpl::startNewLedger()
 {
-     // 100 tx/ledger max
-    startNewLedger(1000000000000000000, 100, 100000000, 100);
+
+    Config cfg;
+    try
+    {
+        // yes you really have to do this 3 times
+        Logging::setLogLevel(logLevel, nullptr);
+        if (cfgFile == "-" || fs::exists(cfgFile))
+        {
+            cfg.load(cfgFile);
+        }
+        else
+        {
+            std::string s;
+            s = "No config file ";
+            s += cfgFile + " found";
+            throw std::invalid_argument(s);
+        }
+        Logging::setFmt(KeyUtils::toShortString(cfg.NODE_SEED.getPublicKey()));
+        Logging::setLogLevel(logLevel, nullptr);
+     
+        // 100 tx/ledger max
+//      startNewLedger(1000000000000000000, 100, 100000000, 100);
+        startNewLedger(cfg.BALANCE, cfg.BASE_FEE, cfg.BASE_RESERVE, cfg.MAX_TX_SET_SIZE);
+    }
+
+    catch (std::exception& e)
+    {
+        LOG(FATAL) << "Got an exception: " << e.what();
+        return 1;
+    }
 }
 
 void
