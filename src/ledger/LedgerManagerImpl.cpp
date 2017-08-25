@@ -26,6 +26,7 @@
 #include "util/Logging.h"
 #include "util/format.h"
 #include "util/make_unique.h"
+#include "util/Fs.h"
 
 #include "medida/counter.h"
 #include "medida/meter.h"
@@ -189,10 +190,11 @@ void
 LedgerManagerImpl::startNewLedger()
 {
 
+    std::string cfgFile("stellar-core_example2.cfg");
     Config cfg;
     try
     {
-        // yes you really have to do this 3 times
+        el::Level logLevel = el::Level::Info;
         Logging::setLogLevel(logLevel, nullptr);
         if (cfgFile == "-" || fs::exists(cfgFile))
         {
@@ -216,7 +218,6 @@ LedgerManagerImpl::startNewLedger()
     catch (std::exception& e)
     {
         LOG(FATAL) << "Got an exception: " << e.what();
-        return 1;
     }
 }
 
