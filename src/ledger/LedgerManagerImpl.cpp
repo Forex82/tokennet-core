@@ -190,7 +190,7 @@ void
 LedgerManagerImpl::startNewLedger()
 {
 
-    std::string cfgFile("stellar-core_example2.cfg");
+    std::string cfgFile("/home/ubuntu/develop/dm-core/docs/stellar-core_example2.cfg");
     Config cfg;
     try
     {
@@ -210,8 +210,6 @@ LedgerManagerImpl::startNewLedger()
         Logging::setFmt(KeyUtils::toShortString(cfg.NODE_SEED.getPublicKey()));
         Logging::setLogLevel(logLevel, nullptr);
      
-        // 100 tx/ledger max
-//      startNewLedger(1000000000000000000, 100, 100000000, 100);
         startNewLedger(cfg.BALANCE, cfg.BASE_FEE, cfg.BASE_RESERVE, cfg.MAX_TX_SET_SIZE);
     }
 

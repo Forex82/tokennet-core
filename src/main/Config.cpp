@@ -639,14 +639,14 @@ Config::load(std::string const& filename)
             {
                 if (!item.second->as<int64_t>())
                 {
-                    throw std::invalid_argument("invalid BALANCE");
+                    throw std::invalid_argument("invalid BALANCE: 1");
                 }
                 int64_t f = item.second->as<int64_t>()->value();
-                if (f < 0 || f >= UINT32_MAX)
+                if (f < 0 || f >= UINT64_MAX)
                 {
-                    throw std::invalid_argument("invalid BALANCE");
+                    throw std::invalid_argument("invalid BALANCE: 2");
                 }
-                BALANCE = (uint32_t)f;
+                BALANCE = (uint64_t)f;
             }
             else if (item.first == "BASE_FEE")
             {
