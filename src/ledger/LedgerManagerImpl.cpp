@@ -215,7 +215,7 @@ LedgerManagerImpl::startNewLedger()
 
     catch (std::exception& e)
     {
-        LOG(FATAL) << "Got an exception: " << e.what();
+        cerr << "Got an exception: " << e.what();
     }
 }
 
