@@ -32,7 +32,7 @@ LedgerManagerEditableVersion::setCurrentLedgerVersion(
 void
 LedgerManagerEditableVersion::startNewLedger()
 {
-    LedgerManagerImpl::startNewLedger(1000000000000000000, mBaseFee, 100000000, 100);
+      LedgerManagerImpl::startNewLedger();
 }
 
 ApplicationEditableVersion::ApplicationEditableVersion(VirtualClock& clock,
