@@ -190,7 +190,7 @@ void
 LedgerManagerImpl::startNewLedger()
 {
 
-    std::string cfgFile("/home/ubuntu/develop/dm-core/docs/stellar-core_example2.cfg");
+    std::string cfgFile("/home/ubuntu/develop/tokennet-core/docs/stellar-core_example2.cfg");
     Config cfg;
     try
     {
