@@ -26,7 +26,6 @@
 #include "util/Logging.h"
 #include "util/format.h"
 #include "util/make_unique.h"
-#include "util/Fs.h"
 
 #include "medida/counter.h"
 #include "medida/meter.h"
@@ -196,7 +195,7 @@ void
 LedgerManagerImpl::startNewLedger()
 {
     startNewLedger(1000000000000000000, 100, 100000000, 100);
-}	
+}
 
 void
 LedgerManagerImpl::loadLastKnownLedger(
