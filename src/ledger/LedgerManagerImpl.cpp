@@ -187,37 +187,16 @@ LedgerManagerImpl::startNewLedger(int64_t balance, uint32_t baseFee, uint32_t ba
 }
 
 void
+LedgerManagerImpl::startNewLedger(Config cfg)
+{
+    startNewLedger(cfg.BALANCE, cfg.BASE_FEE, cfg.BASE_RESERVE, cfg.MAX_TX_SET_SIZE);
+}
+
+void
 LedgerManagerImpl::startNewLedger()
 {
-
-    std::string cfgFile("/home/ubuntu/develop/tokennet-core/docs/stellar-core_example2.cfg");
-    Config cfg;
-    try
-    {
-        el::Level logLevel = el::Level::Info;
-        Logging::setLogLevel(logLevel, nullptr);
-        if (cfgFile == "-" || fs::exists(cfgFile))
-        {
-            cfg.load(cfgFile);
-        }
-        else
-        {
-            std::string s;
-            s = "No config file ";
-            s += cfgFile + " found";
-            throw std::invalid_argument(s);
-        }
-        Logging::setFmt(KeyUtils::toShortString(cfg.NODE_SEED.getPublicKey()));
-        Logging::setLogLevel(logLevel, nullptr);
-     
-        startNewLedger(cfg.BALANCE, cfg.BASE_FEE, cfg.BASE_RESERVE, cfg.MAX_TX_SET_SIZE);
-    }
-
-    catch (std::exception& e)
-    {
-        cerr << "Got an exception: " << e.what();
-    }
-}
+    startNewLedger(1000000000000000000, 100, 100000000, 100);
+}	
 
 void
 LedgerManagerImpl::loadLastKnownLedger(

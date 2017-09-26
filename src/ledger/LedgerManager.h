@@ -6,6 +6,7 @@
 
 #include "history/CatchupManager.h"
 #include "history/HistoryManager.h"
+#include "main/Config.h"
 #include <memory>
 
 namespace stellar
@@ -131,6 +132,7 @@ class LedgerManager
 
     // Called by application lifecycle events, system startup.
     virtual void startNewLedger() = 0;
+    virtual void startNewLedger(Config cfg) = 0;
 
     // loads the last ledger information from the database
     // if handler is set, also loads bucket information and invokes handler.

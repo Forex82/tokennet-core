@@ -130,7 +130,7 @@ ApplicationImpl::newDB()
     LOG(INFO) << "* The database has been initialized";
     LOG(INFO) << "* ";
 
-    mLedgerManager->startNewLedger();
+    mLedgerManager->startNewLedger(getConfig());
 }
 
 void

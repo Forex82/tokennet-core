@@ -1,28 +1,44 @@
-#include "history/CatchupManager.h"
 #include "ledger/LedgerManager.h"
+#include "lib/catch.hpp"
 #include "main/Application.h"
 #include "main/Config.h"
 #include "test/TestAccount.h"
 #include "test/TestExceptions.h"
 #include "test/TestUtils.h"
 #include "test/TxTests.h"
-#include "test/TestAccount.h"
+#include "test/test.h"
 #include "util/Logging.h"
 #include "util/Timer.h"
+#include <unistd.h>
 
-TEST_CASE("ledgerSetting","[tx][ledgerSetting]")
+using namespace stellar;
+using namespace stellar::txtest;
+
+typedef std::unique_ptr<Application> appPtr;
+
+TEST_CASE("ledgerSetting","[ledgerSetting]")
 {
-    Config const& cfg = getTestConfig();
+//    Config const& cfg = getTestConfig();
+    std::string cfgFile("docs/stellar-core_example2.cfg");
+    Config cfg;
+    cfg.load(cfgFile);
 
     VirtualClock clock;
     ApplicationEditableVersion app(clock, cfg);
     app.start();
 		  
-    // set up world
     auto root = TestAccount::createRoot(app);
-    Asset xlmCur;
+   
+    AccountFrame::pointer rootAccount;
+    rootAccount = loadAccount(root, app);
 	   
-    int64_t txfee = app.getLedgerManager().getTxFee();
+    int64_t balance = rootAccount->getBalance();
+    int64_t baseFee = app.getLedgerManager().getTxFee();
+    int64_t baseReserve = app.getLedgerManager().getCurrentLedgerHeader().baseReserve;
+    uint32_t maxTxSetSize = app.getLedgerManager().getMaxTxSetSize();
 
-    std::cout << rootAccount->getBalance() << endl;
+    REQUIRE(balance == cfg.BALANCE);
+    REQUIRE(baseFee == cfg.BASE_FEE);
+    REQUIRE(baseReserve == cfg.BASE_RESERVE);
+    REQUIRE(maxTxSetSize == cfg.MAX_TX_SET_SIZE);
 }
