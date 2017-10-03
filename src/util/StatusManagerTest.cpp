@@ -2,8 +2,8 @@
 // under the Apache License, Version 2.0. See the COPYING file at the root
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
-#include "util/StatusManager.h"
 #include "lib/catch.hpp"
+#include "util/StatusManager.h"
 
 using namespace stellar;
 
@@ -14,7 +14,8 @@ TEST_CASE("status empty on start", "[status-manager]")
     REQUIRE(statusManager.begin() == statusManager.end());
     REQUIRE(statusManager.size() == 0);
     REQUIRE(statusManager.getStatusMessage(StatusCategory::NTP).empty());
-    REQUIRE(statusManager.getStatusMessage(StatusCategory::HISTORY).empty());
+    REQUIRE(statusManager.getStatusMessage(StatusCategory::HISTORY_CATCHUP)
+                .empty());
 }
 
 TEST_CASE("status add", "[status-manager]")
@@ -33,12 +34,12 @@ TEST_CASE("status add two different", "[status-manager]")
     StatusManager statusManager;
 
     statusManager.setStatusMessage(StatusCategory::NTP, "ntp");
-    statusManager.setStatusMessage(StatusCategory::HISTORY, "history");
+    statusManager.setStatusMessage(StatusCategory::HISTORY_CATCHUP, "history");
 
     REQUIRE(statusManager.begin() != statusManager.end());
     REQUIRE(statusManager.size() == 2);
     REQUIRE(statusManager.getStatusMessage(StatusCategory::NTP) == "ntp");
-    REQUIRE(statusManager.getStatusMessage(StatusCategory::HISTORY) ==
+    REQUIRE(statusManager.getStatusMessage(StatusCategory::HISTORY_CATCHUP) ==
             "history");
 }
 

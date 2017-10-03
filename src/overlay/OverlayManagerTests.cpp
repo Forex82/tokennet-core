@@ -65,7 +65,7 @@ class OverlayManagerStub : public OverlayManagerImpl
             pr.backOff(mApp.getClock());
             pr.storePeerRecord(mApp.getDatabase());
 
-            addConnectedPeer(Peer::pointer(new PeerStub(mApp)));
+            addConnectedPeer(std::make_shared<PeerStub>(mApp));
         }
     }
 };
@@ -143,8 +143,6 @@ class OverlayManagerTests
         auto b = TestAccount{app, getAccount("b")};
         auto c = TestAccount{app, getAccount("c")};
         auto d = TestAccount{app, getAccount("d")};
-
-        Hash const& networkID = app.getNetworkID();
 
         StellarMessage AtoC = a.tx({payment(b, 10)})->toStellarMessage();
         pm.recvFloodedMsg(AtoC, *(pm.mPeers.begin() + 2));

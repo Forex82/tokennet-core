@@ -2,31 +2,36 @@
 // under the Apache License, Version 2.0. See the COPYING file at the root
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
-#include "CacheIsConsistentWithDatabase.h"
+#include "invariant/CacheIsConsistentWithDatabase.h"
+#include "invariant/InvariantManager.h"
 #include "ledger/LedgerDelta.h"
 #include "lib/util/format.h"
+#include "main/Application.h"
 #include "xdrpp/printer.h"
 
 namespace stellar
 {
 
-CacheIsConsistentWithDatabase::CacheIsConsistentWithDatabase(
-    Database& db)
+std::shared_ptr<Invariant>
+CacheIsConsistentWithDatabase::registerInvariant(Application& app)
+{
+    return app.getInvariantManager()
+        .registerInvariant<CacheIsConsistentWithDatabase>(app.getDatabase());
+}
+
+CacheIsConsistentWithDatabase::CacheIsConsistentWithDatabase(Database& db)
     : mDb{db}
 {
 }
 
-CacheIsConsistentWithDatabase::
-    ~CacheIsConsistentWithDatabase() = default;
-
 std::string
 CacheIsConsistentWithDatabase::getName() const
 {
-    return "cache is consistent with database";
+    return "CacheIsConsistentWithDatabase";
 }
 
 std::string
-CacheIsConsistentWithDatabase::check(LedgerDelta const& delta) const
+CacheIsConsistentWithDatabase::checkOnLedgerClose(LedgerDelta const& delta)
 {
     for (auto const& l : delta.getLiveEntries())
     {
@@ -41,8 +46,9 @@ CacheIsConsistentWithDatabase::check(LedgerDelta const& delta) const
     {
         if (EntryFrame::exists(mDb, d))
         {
-            return fmt::format("Inconsistent state; entry should not exist in database: {}",
-                                xdr::xdr_to_string(d));
+            return fmt::format(
+                "Inconsistent state; entry should not exist in database: {}",
+                xdr::xdr_to_string(d));
         }
     }
 

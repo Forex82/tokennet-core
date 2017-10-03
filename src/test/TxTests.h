@@ -28,10 +28,10 @@ typedef std::vector<std::pair<TransactionResultPair, LedgerEntryChanges>>
 
 struct ThresholdSetter
 {
-    optional<uint8_t> masterWeight;
-    optional<uint8_t> lowThreshold;
-    optional<uint8_t> medThreshold;
-    optional<uint8_t> highThreshold;
+    optional<int> masterWeight;
+    optional<int> lowThreshold;
+    optional<int> medThreshold;
+    optional<int> highThreshold;
 };
 
 bool applyCheck(TransactionFramePtr tx, Application& app);
@@ -66,12 +66,10 @@ transactionFromOperations(Application& app, SecretKey const& from,
                           SequenceNumber seq,
                           std::vector<Operation> const& ops);
 
-Operation
-changeTrust(Asset const& asset, int64_t limit);
+Operation changeTrust(Asset const& asset, int64_t limit);
 
-Operation
-allowTrust(PublicKey const& trustor, Asset const& asset,
-                   bool authorize);
+Operation allowTrust(PublicKey const& trustor, Asset const& asset,
+                     bool authorize);
 
 Operation inflation();
 
@@ -85,27 +83,24 @@ Operation payment(PublicKey const& to, int64_t amount);
 
 Operation payment(PublicKey const& to, Asset const& asset, int64_t amount);
 
-TransactionFramePtr createPaymentTx(Application& app,
-                                    SecretKey const& from, PublicKey const& to,
-                                    SequenceNumber seq, int64_t amount);
+TransactionFramePtr createPaymentTx(Application& app, SecretKey const& from,
+                                    PublicKey const& to, SequenceNumber seq,
+                                    int64_t amount);
 
 TransactionFramePtr createCreditPaymentTx(Application& app,
                                           SecretKey const& from,
                                           PublicKey const& to, Asset const& ci,
                                           SequenceNumber seq, int64_t amount);
 
-Operation
-pathPayment(PublicKey const& to, Asset const& sendCur, int64_t sendMax,
-            Asset const& destCur, int64_t destAmount,
-            std::vector<Asset> const& path);
+Operation pathPayment(PublicKey const& to, Asset const& sendCur,
+                      int64_t sendMax, Asset const& destCur, int64_t destAmount,
+                      std::vector<Asset> const& path);
 
-Operation manageOffer(uint64 offerId, Asset const& selling,
-                      Asset const& buying, Price const& price,
-                      int64_t amount);
+Operation manageOffer(uint64 offerId, Asset const& selling, Asset const& buying,
+                      Price const& price, int64_t amount);
 
-Operation
-createPassiveOffer(Asset const& selling, Asset const& buying,
-                   Price const& price, int64_t amount);
+Operation createPassiveOffer(Asset const& selling, Asset const& buying,
+                             Price const& price, int64_t amount);
 
 // returns the ID of the new offer if created
 uint64_t applyManageOffer(Application& app, uint64 offerId,
@@ -125,17 +120,13 @@ Operation setOptions(AccountID* inflationDest, uint32_t* setFlags,
                      uint32_t* clearFlags, ThresholdSetter* thrs,
                      Signer* signer, std::string* homeDomain);
 
+Asset makeNativeAsset();
+Asset makeInvalidAsset();
 Asset makeAsset(SecretKey const& issuer, std::string const& code);
 
 OperationFrame const& getFirstOperationFrame(TransactionFrame const& tx);
 OperationResult const& getFirstResult(TransactionFrame const& tx);
 OperationResultCode getFirstResultCode(TransactionFrame const& tx);
-
-// checks that b-maxd <= a <= b
-// bias towards seller means
-//    * amount left in an offer should be higher than the exact calculation
-//    * amount received by a seller should be higher than the exact calculation
-void checkAmounts(int64_t a, int64_t b, int64_t maxd = 1);
 
 // methods to check results based off meta data
 void checkTx(int index, TxSetResultMeta& r, TransactionResultCode expected);

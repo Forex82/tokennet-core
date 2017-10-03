@@ -296,9 +296,6 @@ newLoadTestApp(VirtualClock& clock)
         !force_sqlite ? getTestConfig(0, Config::TESTDB_POSTGRESQL) :
 #endif
                       getTestConfig(0, Config::TESTDB_ON_DISK_SQLITE);
-    cfg.INVARIANT_CHECK_BALANCE = false;
-    cfg.INVARIANT_CHECK_ACCOUNT_SUBENTRY_COUNT = false;
-    cfg.INVARIANT_CHECK_CACHE_CONSISTENT_WITH_DATABASE = false;
     cfg.RUN_STANDALONE = false;
     cfg.DESIRED_MAX_TX_PER_LEDGER = 10000;
     Application::pointer appPtr = Application::create(clock, cfg);
@@ -462,7 +459,7 @@ TEST_CASE("Accounts vs. latency", "[scalability][hide]")
     auto& lg = app.getLoadGenerator();
     auto& txtime = app.getMetrics().NewTimer({"transaction", "op", "apply"});
 
-    size_t step = 5000;
+    int step = 5000;
     size_t total = 10000000;
 
     closeLedger(app);
@@ -525,7 +522,6 @@ netTopologyTest(
         auto nodes = sim->getNodes();
         assert(!nodes.empty());
         auto& app = *nodes[0];
-        auto& lg = app.getLoadGenerator();
         closeLedger(app);
 
         generateAccountsAndCloseLedger(app, 50);

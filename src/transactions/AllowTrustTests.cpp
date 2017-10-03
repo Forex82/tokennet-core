@@ -20,13 +20,11 @@ TEST_CASE("allow trust", "[tx][allowtrust]")
 
     VirtualClock clock;
     ApplicationEditableVersion app{clock, cfg};
-    auto& db = app.getDatabase();
 
     app.start();
 
-    const int64_t assetMultiplier = 10000000;
     const int64_t trustLineLimit = INT64_MAX;
-    const int64_t trustLineStartingBalance = 20000 * assetMultiplier;
+    const int64_t trustLineStartingBalance = 20000;
 
     auto const minBalance2 = app.getLedgerManager().getMinBalance(2);
 
@@ -36,31 +34,32 @@ TEST_CASE("allow trust", "[tx][allowtrust]")
     auto a1 = root.create("A1", minBalance2);
     auto a2 = root.create("A2", minBalance2);
 
-    auto idrCur = makeAsset(gateway, "IDR");
+    auto idr = makeAsset(gateway, "IDR");
 
     SECTION("allow trust not required")
     {
-        for_all_versions(app, [&]{
-            REQUIRE_THROWS_AS(gateway.allowTrust(idrCur, a1),
-                            ex_ALLOW_TRUST_TRUST_NOT_REQUIRED);
-            REQUIRE_THROWS_AS(gateway.denyTrust(idrCur, a1),
-                            ex_ALLOW_TRUST_TRUST_NOT_REQUIRED);
+        for_all_versions(app, [&] {
+            REQUIRE_THROWS_AS(gateway.allowTrust(idr, a1),
+                              ex_ALLOW_TRUST_TRUST_NOT_REQUIRED);
+            REQUIRE_THROWS_AS(gateway.denyTrust(idr, a1),
+                              ex_ALLOW_TRUST_TRUST_NOT_REQUIRED);
         });
     }
 
     SECTION("allow trust without trustline")
     {
-        for_all_versions(app, [&]{
-            auto setFlags = static_cast<uint32_t>(AUTH_REQUIRED_FLAG);
-            gateway.setOptions(nullptr, &setFlags, nullptr, nullptr, nullptr,
-                               nullptr);
-
+        for_all_versions(app, [&] {
+            {
+                auto setFlags = static_cast<uint32_t>(AUTH_REQUIRED_FLAG);
+                gateway.setOptions(nullptr, &setFlags, nullptr, nullptr,
+                                   nullptr, nullptr);
+            }
             SECTION("do not set revocable flag")
             {
-                REQUIRE_THROWS_AS(gateway.allowTrust(idrCur, a1),
-                                ex_ALLOW_TRUST_NO_TRUST_LINE);
-                REQUIRE_THROWS_AS(gateway.denyTrust(idrCur, a1),
-                                ex_ALLOW_TRUST_CANT_REVOKE);
+                REQUIRE_THROWS_AS(gateway.allowTrust(idr, a1),
+                                  ex_ALLOW_TRUST_NO_TRUST_LINE);
+                REQUIRE_THROWS_AS(gateway.denyTrust(idr, a1),
+                                  ex_ALLOW_TRUST_CANT_REVOKE);
             }
             SECTION("set revocable flag")
             {
@@ -68,45 +67,47 @@ TEST_CASE("allow trust", "[tx][allowtrust]")
                 gateway.setOptions(nullptr, &setFlags, nullptr, nullptr,
                                    nullptr, nullptr);
 
-                REQUIRE_THROWS_AS(gateway.allowTrust(idrCur, a1),
-                                ex_ALLOW_TRUST_NO_TRUST_LINE);
-                REQUIRE_THROWS_AS(gateway.denyTrust(idrCur, a1),
-                                ex_ALLOW_TRUST_NO_TRUST_LINE);
+                REQUIRE_THROWS_AS(gateway.allowTrust(idr, a1),
+                                  ex_ALLOW_TRUST_NO_TRUST_LINE);
+                REQUIRE_THROWS_AS(gateway.denyTrust(idr, a1),
+                                  ex_ALLOW_TRUST_NO_TRUST_LINE);
             }
         });
     }
 
     SECTION("allow trust not required with payment")
     {
-        for_all_versions(app, [&]{
-            a1.changeTrust(idrCur, trustLineLimit);
-            gateway.pay(a1, idrCur, trustLineStartingBalance);
-            a1.pay(gateway, idrCur, trustLineStartingBalance);
+        for_all_versions(app, [&] {
+            a1.changeTrust(idr, trustLineLimit);
+            gateway.pay(a1, idr, trustLineStartingBalance);
+            a1.pay(gateway, idr, trustLineStartingBalance);
         });
     }
 
     SECTION("allow trust required")
     {
-        for_all_versions(app, [&]{
-            auto setFlags = static_cast<uint32_t>(AUTH_REQUIRED_FLAG);
-            gateway.setOptions(nullptr, &setFlags, nullptr, nullptr, nullptr,
-                               nullptr);
+        for_all_versions(app, [&] {
+            {
+                auto setFlags = static_cast<uint32_t>(AUTH_REQUIRED_FLAG);
+                gateway.setOptions(nullptr, &setFlags, nullptr, nullptr,
+                                   nullptr, nullptr);
 
-            a1.changeTrust(idrCur, trustLineLimit);
-            REQUIRE_THROWS_AS(gateway.pay(a1, idrCur, trustLineStartingBalance),
-                            ex_PAYMENT_NOT_AUTHORIZED);
+                a1.changeTrust(idr, trustLineLimit);
+                REQUIRE_THROWS_AS(
+                    gateway.pay(a1, idr, trustLineStartingBalance),
+                    ex_PAYMENT_NOT_AUTHORIZED);
 
-            gateway.allowTrust(idrCur, a1);
-            gateway.pay(a1, idrCur, trustLineStartingBalance);
-
+                gateway.allowTrust(idr, a1);
+                gateway.pay(a1, idr, trustLineStartingBalance);
+            }
             SECTION("do not set revocable flag")
             {
-                REQUIRE_THROWS_AS(gateway.denyTrust(idrCur, a1),
-                                ex_ALLOW_TRUST_CANT_REVOKE);
-                a1.pay(gateway, idrCur, trustLineStartingBalance);
+                REQUIRE_THROWS_AS(gateway.denyTrust(idr, a1),
+                                  ex_ALLOW_TRUST_CANT_REVOKE);
+                a1.pay(gateway, idr, trustLineStartingBalance);
 
-                REQUIRE_THROWS_AS(gateway.denyTrust(idrCur, a1),
-                                ex_ALLOW_TRUST_CANT_REVOKE);
+                REQUIRE_THROWS_AS(gateway.denyTrust(idr, a1),
+                                  ex_ALLOW_TRUST_CANT_REVOKE);
             }
             SECTION("set revocable flag")
             {
@@ -114,12 +115,13 @@ TEST_CASE("allow trust", "[tx][allowtrust]")
                 gateway.setOptions(nullptr, &setFlags, nullptr, nullptr,
                                    nullptr, nullptr);
 
-                gateway.denyTrust(idrCur, a1);
-                REQUIRE_THROWS_AS(a1.pay(gateway, idrCur, trustLineStartingBalance),
-                                ex_PAYMENT_SRC_NOT_AUTHORIZED);
+                gateway.denyTrust(idr, a1);
+                REQUIRE_THROWS_AS(
+                    a1.pay(gateway, idr, trustLineStartingBalance),
+                    ex_PAYMENT_SRC_NOT_AUTHORIZED);
 
-                gateway.allowTrust(idrCur, a1);
-                a1.pay(gateway, idrCur, trustLineStartingBalance);
+                gateway.allowTrust(idr, a1);
+                a1.pay(gateway, idr, trustLineStartingBalance);
             }
         });
     }
@@ -128,39 +130,40 @@ TEST_CASE("allow trust", "[tx][allowtrust]")
     {
         SECTION("allow trust with trustline")
         {
-            for_versions_to(2, app, [&]{
-                REQUIRE_THROWS_AS(gateway.allowTrust(idrCur, gateway),
-                                    ex_ALLOW_TRUST_TRUST_NOT_REQUIRED);
-                REQUIRE_THROWS_AS(gateway.denyTrust(idrCur, gateway),
-                                    ex_ALLOW_TRUST_TRUST_NOT_REQUIRED);
+            for_versions_to(2, app, [&] {
+                REQUIRE_THROWS_AS(gateway.allowTrust(idr, gateway),
+                                  ex_ALLOW_TRUST_TRUST_NOT_REQUIRED);
+                REQUIRE_THROWS_AS(gateway.denyTrust(idr, gateway),
+                                  ex_ALLOW_TRUST_TRUST_NOT_REQUIRED);
             });
 
-            for_versions_from(3, app, [&]{
-                REQUIRE_THROWS_AS(gateway.allowTrust(idrCur, gateway),
+            for_versions_from(3, app, [&] {
+                REQUIRE_THROWS_AS(gateway.allowTrust(idr, gateway),
                                   ex_ALLOW_TRUST_SELF_NOT_ALLOWED);
-                REQUIRE_THROWS_AS(gateway.denyTrust(idrCur, gateway),
+                REQUIRE_THROWS_AS(gateway.denyTrust(idr, gateway),
                                   ex_ALLOW_TRUST_SELF_NOT_ALLOWED);
             });
         }
 
         SECTION("allow trust without explicit trustline")
         {
-            auto setFlags = static_cast<uint32_t>(AUTH_REQUIRED_FLAG);
-            gateway.setOptions(nullptr, &setFlags, nullptr, nullptr, nullptr,
-                              nullptr);
-
+            {
+                auto setFlags = static_cast<uint32_t>(AUTH_REQUIRED_FLAG);
+                gateway.setOptions(nullptr, &setFlags, nullptr, nullptr,
+                                   nullptr, nullptr);
+            }
             SECTION("do not set revocable flag")
             {
-                for_versions_to(2, app, [&]{
-                    gateway.allowTrust(idrCur, gateway);
-                    REQUIRE_THROWS_AS(gateway.denyTrust(idrCur, gateway),
-                                        ex_ALLOW_TRUST_CANT_REVOKE);
+                for_versions_to(2, app, [&] {
+                    gateway.allowTrust(idr, gateway);
+                    REQUIRE_THROWS_AS(gateway.denyTrust(idr, gateway),
+                                      ex_ALLOW_TRUST_CANT_REVOKE);
                 });
 
-                for_versions_from(3, app, [&]{
-                    REQUIRE_THROWS_AS(gateway.allowTrust(idrCur, gateway),
+                for_versions_from(3, app, [&] {
+                    REQUIRE_THROWS_AS(gateway.allowTrust(idr, gateway),
                                       ex_ALLOW_TRUST_SELF_NOT_ALLOWED);
-                    REQUIRE_THROWS_AS(gateway.denyTrust(idrCur, gateway),
+                    REQUIRE_THROWS_AS(gateway.denyTrust(idr, gateway),
                                       ex_ALLOW_TRUST_SELF_NOT_ALLOWED);
                 });
             }
@@ -170,15 +173,15 @@ TEST_CASE("allow trust", "[tx][allowtrust]")
                 gateway.setOptions(nullptr, &setFlags, nullptr, nullptr,
                                    nullptr, nullptr);
 
-                for_versions_to(2, app, [&]{
-                    gateway.allowTrust(idrCur, gateway);
-                    gateway.denyTrust(idrCur, gateway);
+                for_versions_to(2, app, [&] {
+                    gateway.allowTrust(idr, gateway);
+                    gateway.denyTrust(idr, gateway);
                 });
 
-                for_versions_from(3, app, [&]{
-                    REQUIRE_THROWS_AS(gateway.allowTrust(idrCur, gateway),
+                for_versions_from(3, app, [&] {
+                    REQUIRE_THROWS_AS(gateway.allowTrust(idr, gateway),
                                       ex_ALLOW_TRUST_SELF_NOT_ALLOWED);
-                    REQUIRE_THROWS_AS(gateway.denyTrust(idrCur, gateway),
+                    REQUIRE_THROWS_AS(gateway.denyTrust(idr, gateway),
                                       ex_ALLOW_TRUST_SELF_NOT_ALLOWED);
                 });
             }
