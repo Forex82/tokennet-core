@@ -256,11 +256,9 @@ class HistoryManager
     // catchup probe.
     virtual uint64_t nextCheckpointCatchupProbe(uint32_t ledger) = 0;
 
-    // Emit a log message and set StatusManager HISTORY status to
-    // describe current catchup/publish state. The `contiguous` argument
-    // is passed in to describe whether the ledger-manager's view of
-    // current catchup tasks is currently contiguous or discontiguous.
-    virtual void logAndUpdateStatus(bool contiguous) = 0;
+    // Emit a log message and set StatusManager HISTORY_PUBLISH status to
+    // describe current publish state.
+    virtual void logAndUpdatePublishStatus() = 0;
 
     // Return the length of the current publishing queue.
     virtual size_t publishQueueLength() const = 0;
@@ -308,7 +306,10 @@ class HistoryManager
     // configured archives published correctly; if so the snapshot
     // can be dequeued, otherwise it should remain and be tried again
     // later.
-    virtual void historyPublished(uint32_t ledgerSeq, bool success) = 0;
+    virtual void
+    historyPublished(uint32_t ledgerSeq,
+                     std::vector<std::string> const& originalBuckets,
+                     bool success) = 0;
 
     virtual void downloadMissingBuckets(
         HistoryArchiveState desiredState,

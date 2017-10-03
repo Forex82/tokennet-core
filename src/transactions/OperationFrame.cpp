@@ -46,7 +46,7 @@ getNeededThreshold(AccountFrame const& account, ThresholdLevel const level)
     case ThresholdLevel::HIGH:
         return account.getHighThreshold();
     default:
-        assert(false);
+        abort();
     }
 }
 }
@@ -58,29 +58,27 @@ OperationFrame::makeHelper(Operation const& op, OperationResult& res,
     switch (op.body.type())
     {
     case CREATE_ACCOUNT:
-        return shared_ptr<OperationFrame>(
-            new CreateAccountOpFrame(op, res, tx));
+        return std::make_shared<CreateAccountOpFrame>(op, res, tx);
     case PAYMENT:
-        return shared_ptr<OperationFrame>(new PaymentOpFrame(op, res, tx));
+        return std::make_shared<PaymentOpFrame>(op, res, tx);
     case PATH_PAYMENT:
-        return shared_ptr<OperationFrame>(new PathPaymentOpFrame(op, res, tx));
+        return std::make_shared<PathPaymentOpFrame>(op, res, tx);
     case MANAGE_OFFER:
-        return shared_ptr<OperationFrame>(new ManageOfferOpFrame(op, res, tx));
+        return std::make_shared<ManageOfferOpFrame>(op, res, tx);
     case CREATE_PASSIVE_OFFER:
-        return shared_ptr<OperationFrame>(
-            new CreatePassiveOfferOpFrame(op, res, tx));
+        return std::make_shared<CreatePassiveOfferOpFrame>(op, res, tx);
     case SET_OPTIONS:
-        return shared_ptr<OperationFrame>(new SetOptionsOpFrame(op, res, tx));
+        return std::make_shared<SetOptionsOpFrame>(op, res, tx);
     case CHANGE_TRUST:
-        return shared_ptr<OperationFrame>(new ChangeTrustOpFrame(op, res, tx));
+        return std::make_shared<ChangeTrustOpFrame>(op, res, tx);
     case ALLOW_TRUST:
-        return shared_ptr<OperationFrame>(new AllowTrustOpFrame(op, res, tx));
+        return std::make_shared<AllowTrustOpFrame>(op, res, tx);
     case ACCOUNT_MERGE:
-        return shared_ptr<OperationFrame>(new MergeOpFrame(op, res, tx));
+        return std::make_shared<MergeOpFrame>(op, res, tx);
     case INFLATION:
-        return shared_ptr<OperationFrame>(new InflationOpFrame(op, res, tx));
+        return std::make_shared<InflationOpFrame>(op, res, tx);
     case MANAGE_DATA:
-        return shared_ptr<OperationFrame>(new ManageDataOpFrame(op, res, tx));
+        return std::make_shared<ManageDataOpFrame>(op, res, tx);
 
     default:
         ostringstream err;
@@ -132,9 +130,11 @@ OperationFrame::getSourceID() const
 }
 
 bool
-OperationFrame::loadAccount(int ledgerProtocolVersion, LedgerDelta* delta, Database& db)
+OperationFrame::loadAccount(int ledgerProtocolVersion, LedgerDelta* delta,
+                            Database& db)
 {
-    mSourceAccount = mParentTx.loadAccount(ledgerProtocolVersion, delta, db, getSourceID());
+    mSourceAccount =
+        mParentTx.loadAccount(ledgerProtocolVersion, delta, db, getSourceID());
     return !!mSourceAccount;
 }
 
@@ -153,7 +153,8 @@ OperationFrame::checkValid(SignatureChecker& signatureChecker, Application& app,
                            LedgerDelta* delta)
 {
     bool forApply = (delta != nullptr);
-    if (!loadAccount(app.getLedgerManager().getCurrentLedgerVersion(), delta, app.getDatabase()))
+    if (!loadAccount(app.getLedgerManager().getCurrentLedgerVersion(), delta,
+                     app.getDatabase()))
     {
         if (forApply || !mOperation.sourceAccount)
         {
@@ -170,7 +171,7 @@ OperationFrame::checkValid(SignatureChecker& signatureChecker, Application& app,
         }
     }
 
-    if (app.getLedgerManager().getCurrentLedgerVersion() != 7 && !checkSignature(signatureChecker))
+    if (!checkSignature(signatureChecker))
     {
         app.getMetrics()
             .NewMeter({"operation", "invalid", "bad-auth"}, "operation")

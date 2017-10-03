@@ -2,9 +2,13 @@
 // under the Apache License, Version 2.0. See the COPYING file at the root
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
-#include "test.h"
+#define CATCH_CONFIG_RUNNER
+
+#include "util/asio.h"
+
 #include "StellarCoreVersion.h"
 #include "main/Config.h"
+#include "test.h"
 #include "test/TestUtils.h"
 #include "util/Logging.h"
 #include "util/TmpDir.h"
@@ -23,8 +27,15 @@
 #include <sys/stat.h>
 #endif
 
-#define CATCH_CONFIG_RUNNER
-#include "lib/catch.hpp"
+#include "test/DotReporter.h"
+
+namespace Catch
+{
+
+DotReporter::~DotReporter()
+{
+}
+}
 
 namespace stellar
 {
@@ -68,9 +79,10 @@ getTestConfig(int instanceNumber, Config::TestDbMode mode)
         thisConfig.LOG_FILE_PATH = sstream.str();
         thisConfig.BUCKET_DIR_PATH = rootDir + "bucket";
 
-        thisConfig.INVARIANT_CHECK_BALANCE = true;
-        thisConfig.INVARIANT_CHECK_ACCOUNT_SUBENTRY_COUNT = true;
-        thisConfig.INVARIANT_CHECK_CACHE_CONSISTENT_WITH_DATABASE = true;
+        thisConfig.INVARIANT_CHECKS = {"CacheIsConsistentWithDatabase",
+                                       "ChangedAccountsSubentriesCountIsValid",
+                                       "TotalCoinsEqualsBalancesPlusFeePool"};
+
         thisConfig.ALLOW_LOCALHOST_FOR_TESTING = true;
 
         // Tests are run in standalone by default, meaning that no external
@@ -139,7 +151,10 @@ test(int argc, char* const* argv, el::Level ll,
     LOG(INFO) << "Testing stellar-core " << STELLAR_CORE_VERSION;
     LOG(INFO) << "Logging to " << cfg.LOG_FILE_PATH;
 
-    return Catch::Session().run(argc, argv);
+    int r = Catch::Session().run(argc, argv);
+    gTestRoots.clear();
+    gTestCfg->clear();
+    return r;
 }
 
 void

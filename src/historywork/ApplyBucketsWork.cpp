@@ -137,6 +137,8 @@ ApplyBucketsWork::onRun()
 Work::State
 ApplyBucketsWork::onSuccess()
 {
+    mApp.getCatchupManager().logAndUpdateCatchupStatus(true);
+
     if ((mSnapApplicator && *mSnapApplicator) ||
         (mCurrApplicator && *mCurrApplicator))
     {
@@ -163,8 +165,8 @@ ApplyBucketsWork::onSuccess()
     if (mLevel != 0)
     {
         --mLevel;
-        CLOG(DEBUG, "History")
-            << "ApplyBuckets : starting next level: " << mLevel;
+        CLOG(DEBUG, "History") << "ApplyBuckets : starting next level: "
+                               << mLevel;
         return WORK_PENDING;
     }
 

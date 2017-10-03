@@ -278,40 +278,31 @@ HistoryManagerImpl::nextCheckpointCatchupProbe(uint32_t ledger)
 }
 
 void
-HistoryManagerImpl::logAndUpdateStatus(bool contiguous)
+HistoryManagerImpl::logAndUpdatePublishStatus()
 {
-    auto catchupStatus = mApp.getCatchupManager().getStatus();
     std::stringstream stateStr;
-    if (!catchupStatus.empty())
-    {
-        stateStr << "Catching up"
-                 << (contiguous ? ""
-                                : " (discontiguous; will fail and restart)")
-                 << ": " << catchupStatus;
-    }
-    else if (mPublishWork)
+    if (mPublishWork)
     {
         auto qlen = publishQueueLength();
         stateStr << "Publishing " << qlen << " queued checkpoints"
                  << " [" << getMinLedgerQueuedToPublish() << "-"
                  << getMaxLedgerQueuedToPublish() << "]"
                  << ": " << mPublishWork->getStatus();
-    }
-    if (!catchupStatus.empty() || mPublishWork)
-    {
+
         auto current = stateStr.str();
-        auto existing =
-            mApp.getStatusManager().getStatusMessage(StatusCategory::HISTORY);
+        auto existing = mApp.getStatusManager().getStatusMessage(
+            StatusCategory::HISTORY_PUBLISH);
         if (existing != current)
         {
             CLOG(INFO, "History") << current;
-            mApp.getStatusManager().setStatusMessage(StatusCategory::HISTORY,
-                                                     current);
+            mApp.getStatusManager().setStatusMessage(
+                StatusCategory::HISTORY_PUBLISH, current);
         }
     }
     else
     {
-        mApp.getStatusManager().removeStatusMessage(StatusCategory::HISTORY);
+        mApp.getStatusManager().removeStatusMessage(
+            StatusCategory::HISTORY_PUBLISH);
     }
 }
 
@@ -514,6 +505,7 @@ HistoryManagerImpl::queueCurrentHistory()
     // merges-in-progress, avoid restarting them.
 
     mPublishQueue.Mark();
+    mPublishQueueBuckets.addBuckets(has.allBuckets());
     takeSnapshotAndPublish(has);
 }
 
@@ -577,7 +569,7 @@ HistoryManagerImpl::getPublishQueueStates()
 }
 
 std::vector<std::string>
-HistoryManagerImpl::getBucketsReferencedByPublishQueue()
+HistoryManagerImpl::loadBucketsReferencedByPublishQueue()
 {
     auto states = getPublishQueueStates();
     std::set<std::string> buckets;
@@ -587,6 +579,24 @@ HistoryManagerImpl::getBucketsReferencedByPublishQueue()
         buckets.insert(sb.begin(), sb.end());
     }
     return std::vector<std::string>(buckets.begin(), buckets.end());
+}
+
+std::vector<std::string>
+HistoryManagerImpl::getBucketsReferencedByPublishQueue()
+{
+    if (!mPublishQueueBucketsFilled)
+    {
+        mPublishQueueBuckets.addBuckets(loadBucketsReferencedByPublishQueue());
+        mPublishQueueBucketsFilled = true;
+    }
+
+    std::vector<std::string> buckets;
+    for (auto const& s : mPublishQueueBuckets.map())
+    {
+        buckets.push_back(s.first);
+    }
+
+    return buckets;
 }
 
 std::vector<std::string>
@@ -603,7 +613,9 @@ HistoryManagerImpl::getMissingBucketsReferencedByPublishQueue()
 }
 
 void
-HistoryManagerImpl::historyPublished(uint32_t ledgerSeq, bool success)
+HistoryManagerImpl::historyPublished(
+    uint32_t ledgerSeq, std::vector<std::string> const& originalBuckets,
+    bool success)
 {
     if (success)
     {
@@ -615,6 +627,8 @@ HistoryManagerImpl::historyPublished(uint32_t ledgerSeq, bool success)
         st.exchange(soci::use(ledgerSeq));
         st.define_and_bind();
         st.execute(true);
+
+        mPublishQueueBuckets.removeBuckets(originalBuckets);
     }
     else
     {

@@ -762,10 +762,7 @@ LoadGenerator::AccountInfo::debitDirectly(Application& app, int64_t debitAmount)
     }
     AccountEntry& account = existing->getAccount();
     auto ledger = app.getLedgerManager().getLedgerNum();
-    if (account.balance >= debitAmount)
-    {
-        account.balance -= debitAmount;
-    }
+    existing->addBalance(-debitAmount); // it can fail, we don't care here
     account.seqNum++;
     existing->touch(ledger);
     LedgerDelta delta(app.getLedgerManager().getCurrentLedgerHeader(),
@@ -916,8 +913,7 @@ LoadGenerator::TxInfo::execute(Application& app)
 
 void
 LoadGenerator::TxInfo::toTransactionFrames(
-    Application& app, std::vector<TransactionFramePtr>& txs,
-    TxMetrics& txm)
+    Application& app, std::vector<TransactionFramePtr>& txs, TxMetrics& txm)
 {
     switch (mType)
     {
@@ -995,8 +991,8 @@ LoadGenerator::TxInfo::toTransactionFrames(
             }
 
             e.tx.fee = 100 * static_cast<uint32>(e.tx.operations.size());
-            TransactionFramePtr res =
-                TransactionFrame::makeTransactionFromWire(app.getNetworkID(), e);
+            TransactionFramePtr res = TransactionFrame::makeTransactionFromWire(
+                app.getNetworkID(), e);
             for (auto a : signingAccounts)
             {
                 res->addSignature(a->mKey);
@@ -1008,7 +1004,8 @@ LoadGenerator::TxInfo::toTransactionFrames(
     case TxInfo::TX_TRANSFER_NATIVE:
         txm.mPayment.Mark();
         txm.mNativePayment.Mark();
-        txs.push_back(txtest::createPaymentTx(app, mFrom->mKey, mTo->mKey.getPublicKey(),
+        txs.push_back(txtest::createPaymentTx(app, mFrom->mKey,
+                                              mTo->mKey.getPublicKey(),
                                               mFrom->mSeq + 1, mAmount));
         break;
 
@@ -1027,8 +1024,8 @@ LoadGenerator::TxInfo::toTransactionFrames(
         {
             txm.mCreditPayment.Mark();
             txs.emplace_back(txtest::createCreditPaymentTx(
-                app, mFrom->mKey, mTo->mKey.getPublicKey(),
-                assetPath.front(), mFrom->mSeq + 1, mAmount));
+                app, mFrom->mKey, mTo->mKey.getPublicKey(), assetPath.front(),
+                mFrom->mSeq + 1, mAmount));
         }
         else
         {

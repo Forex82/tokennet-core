@@ -2,18 +2,25 @@
 // under the Apache License, Version 2.0. See the COPYING file at the root
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
-#include "ChangedAccountsSubnetriesCountIsValid.h"
+#include "ChangedAccountsSubentriesCountIsValid.h"
 #include "crypto/KeyUtils.h"
 #include "crypto/SecretKey.h"
 #include "database/AccountQueries.h"
+#include "invariant/InvariantManager.h"
 #include "ledger/LedgerDelta.h"
 #include "lib/util/format.h"
+#include "main/Application.h"
 
 namespace stellar
 {
 
-namespace
+std::shared_ptr<Invariant>
+ChangedAccountsSubentriesCountIsValid::registerInvariant(Application& app)
 {
+    return app.getInvariantManager()
+        .registerInvariant<ChangedAccountsSubentriesCountIsValid>(
+            app.getDatabase());
+}
 
 AccountID
 getAccount(LedgerEntry const& entry)
@@ -30,7 +37,7 @@ getAccount(LedgerEntry const& entry)
     case DATA:
         return d.data().accountID;
     default:
-        assert(false);
+        abort();
     }
 }
 
@@ -48,7 +55,7 @@ getAccount(LedgerKey const& key)
     case DATA:
         return key.data().accountID;
     default:
-        assert(false);
+        abort();
     }
 }
 
@@ -92,25 +99,22 @@ getDeletedAccounts(LedgerDelta const& delta)
     }
     return result;
 }
-}
 
-ChangedAccountsSubnetriesCountIsValid::ChangedAccountsSubnetriesCountIsValid(
+ChangedAccountsSubentriesCountIsValid::ChangedAccountsSubentriesCountIsValid(
     Database& db)
     : mDb{db}
 {
 }
 
-ChangedAccountsSubnetriesCountIsValid::
-    ~ChangedAccountsSubnetriesCountIsValid() = default;
-
 std::string
-ChangedAccountsSubnetriesCountIsValid::getName() const
+ChangedAccountsSubentriesCountIsValid::getName() const
 {
-    return "subentries count";
+    return "ChangedAccountsSubentriesCountIsValid";
 }
 
 std::string
-ChangedAccountsSubnetriesCountIsValid::check(LedgerDelta const& delta) const
+ChangedAccountsSubentriesCountIsValid::checkOnLedgerClose(
+    LedgerDelta const& delta)
 {
     for (auto const& account : getAddedOrUpdatedAccounts(delta))
     {
@@ -118,17 +122,18 @@ ChangedAccountsSubnetriesCountIsValid::check(LedgerDelta const& delta) const
         if (subentries.inAccountsTable != subentries.calculated)
         {
             return fmt::format("account {} subentries count mismatch: "
-                                "{} in accounts table vs {} calculated",
-                                KeyUtils::toStrKey(account),
-                                subentries.inAccountsTable,
-                                subentries.calculated);
+                               "{} in accounts table vs {} calculated",
+                               KeyUtils::toStrKey(account),
+                               subentries.inAccountsTable,
+                               subentries.calculated);
         }
     }
 
     for (auto const& account : getDeletedAccounts(delta))
     {
         auto subentries = numberOfSubentries(account, mDb);
-        if (subentries.inAccountsTable != subentries.calculated || subentries.inAccountsTable != 0)
+        if (subentries.inAccountsTable != subentries.calculated ||
+            subentries.inAccountsTable != 0)
         {
             return fmt::format(
                 "non-exsiting account {} subentries count mismatch: {} "

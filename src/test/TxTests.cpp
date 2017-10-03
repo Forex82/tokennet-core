@@ -5,7 +5,7 @@
 #include "TxTests.h"
 
 #include "crypto/ByteSlice.h"
-#include "invariant/Invariants.h"
+#include "invariant/InvariantManager.h"
 #include "ledger/DataFrame.h"
 #include "ledger/LedgerDelta.h"
 #include "lib/catch.hpp"
@@ -97,7 +97,7 @@ applyCheck(TransactionFramePtr tx, Application& app)
 
     // validates db state
     app.getLedgerManager().checkDbState();
-    app.getInvariants().check(txSet, delta);
+    app.getInvariantManager().checkOnLedgerClose(txSet, delta);
     delta.commit();
 
     return res;
@@ -106,7 +106,8 @@ applyCheck(TransactionFramePtr tx, Application& app)
 void
 checkTransaction(TransactionFrame& txFrame, Application& app)
 {
-    REQUIRE(txFrame.getResult().feeCharged == app.getLedgerManager().getTxFee());
+    REQUIRE(txFrame.getResult().feeCharged ==
+            app.getLedgerManager().getTxFee());
     REQUIRE((txFrame.getResultCode() == txSUCCESS ||
              txFrame.getResultCode() == txFAILED));
 }
@@ -230,7 +231,8 @@ transactionFromOperations(Application& app, SecretKey const& from,
 {
     auto e = TransactionEnvelope{};
     e.tx.sourceAccount = from.getPublicKey();
-    e.tx.fee = ops.size() * app.getLedgerManager().getTxFee();
+    e.tx.fee = static_cast<uint32_t>(
+        (ops.size() * app.getLedgerManager().getTxFee()) & UINT32_MAX);
     e.tx.seqNum = seq;
     std::copy(std::begin(ops), std::end(ops),
               std::back_inserter(e.tx.operations));
@@ -253,8 +255,7 @@ changeTrust(Asset const& asset, int64_t limit)
 }
 
 Operation
-allowTrust(PublicKey const& trustor, Asset const& asset,
-                   bool authorize)
+allowTrust(PublicKey const& trustor, Asset const& asset, bool authorize)
 {
     Operation op;
 
@@ -300,11 +301,10 @@ payment(PublicKey const& to, Asset const& asset, int64_t amount)
 }
 
 TransactionFramePtr
-createPaymentTx(Application& app, SecretKey const& from,
-                PublicKey const& to, SequenceNumber seq, int64_t amount)
+createPaymentTx(Application& app, SecretKey const& from, PublicKey const& to,
+                SequenceNumber seq, int64_t amount)
 {
-    return transactionFromOperations(app, from, seq,
-                                     {payment(to, amount)});
+    return transactionFromOperations(app, from, seq, {payment(to, amount)});
 }
 
 TransactionFramePtr
@@ -314,6 +314,22 @@ createCreditPaymentTx(Application& app, SecretKey const& from,
 {
     auto op = payment(to, asset, amount);
     return transactionFromOperations(app, from, seq, {op});
+}
+
+Asset
+makeNativeAsset()
+{
+    Asset asset;
+    asset.type(ASSET_TYPE_NATIVE);
+    return asset;
+}
+
+Asset
+makeInvalidAsset()
+{
+    Asset asset;
+    asset.type(ASSET_TYPE_CREDIT_ALPHANUM4);
+    return asset;
 }
 
 Asset
@@ -379,7 +395,8 @@ applyCreateOfferHelper(Application& app, uint64 offerId,
                        Asset const& buying, Price const& price, int64_t amount,
                        SequenceNumber seq)
 {
-    auto lastGeneratedID = app.getLedgerManager().getCurrentLedgerHeader().idPool;
+    auto lastGeneratedID =
+        app.getLedgerManager().getCurrentLedgerHeader().idPool;
     auto expectedOfferID = lastGeneratedID + 1;
     if (offerId != 0)
     {
@@ -395,7 +412,8 @@ applyCreateOfferHelper(Application& app, uint64 offerId,
     }
     catch (...)
     {
-        REQUIRE(app.getLedgerManager().getCurrentLedgerHeader().idPool == lastGeneratedID);
+        REQUIRE(app.getLedgerManager().getCurrentLedgerHeader().idPool ==
+                lastGeneratedID);
         throw;
     }
 
@@ -414,8 +432,7 @@ applyCreateOfferHelper(Application& app, uint64 offerId,
     case MANAGE_OFFER_CREATED:
     case MANAGE_OFFER_UPDATED:
     {
-        offer =
-            loadOffer(source.getPublicKey(), expectedOfferID, app, true);
+        offer = loadOffer(source.getPublicKey(), expectedOfferID, app, true);
         auto& offerEntry = offer->getOffer();
         REQUIRE(offerEntry == offerResult.offer());
         REQUIRE(offerEntry.price == price);
@@ -424,8 +441,7 @@ applyCreateOfferHelper(Application& app, uint64 offerId,
     }
     break;
     case MANAGE_OFFER_DELETED:
-        REQUIRE(
-            !loadOffer(source.getPublicKey(), expectedOfferID, app, false));
+        REQUIRE(!loadOffer(source.getPublicKey(), expectedOfferID, app, false));
         break;
     default:
         abort();
@@ -445,7 +461,7 @@ applyManageOffer(Application& app, uint64 offerId, SecretKey const& source,
 
     auto& success = createOfferRes.success().offer;
     REQUIRE(success.effect() == expectedEffect);
-    return success.effect() == MANAGE_OFFER_CREATED ? success.offer().offerID
+    return success.effect() != MANAGE_OFFER_DELETED ? success.offer().offerID
                                                     : 0;
 }
 
@@ -455,7 +471,8 @@ applyCreatePassiveOffer(Application& app, SecretKey const& source,
                         Price const& price, int64_t amount, SequenceNumber seq,
                         ManageOfferEffect expectedEffect)
 {
-    auto lastGeneratedID = app.getLedgerManager().getCurrentLedgerHeader().idPool;
+    auto lastGeneratedID =
+        app.getLedgerManager().getCurrentLedgerHeader().idPool;
     auto expectedOfferID = lastGeneratedID + 1;
 
     auto op = createPassiveOffer(selling, buying, price, amount);
@@ -467,7 +484,8 @@ applyCreatePassiveOffer(Application& app, SecretKey const& source,
     }
     catch (...)
     {
-        REQUIRE(app.getLedgerManager().getCurrentLedgerHeader().idPool == lastGeneratedID);
+        REQUIRE(app.getLedgerManager().getCurrentLedgerHeader().idPool ==
+                lastGeneratedID);
         throw;
     }
 
@@ -516,9 +534,8 @@ applyCreatePassiveOffer(Application& app, SecretKey const& source,
 }
 
 Operation
-setOptions(AccountID* inflationDest, uint32_t* setFlags,
-           uint32_t* clearFlags, ThresholdSetter* thrs, Signer* signer,
-           std::string* homeDomain)
+setOptions(AccountID* inflationDest, uint32_t* setFlags, uint32_t* clearFlags,
+           ThresholdSetter* thrs, Signer* signer, std::string* homeDomain)
 {
     Operation op;
     op.body.type(SET_OPTIONS);
@@ -619,14 +636,6 @@ OperationResultCode
 getFirstResultCode(TransactionFrame const& tx)
 {
     return getFirstOperationFrame(tx).getResultCode();
-}
-
-void
-checkAmounts(int64_t a, int64_t b, int64_t maxd)
-{
-    int64_t d = b - maxd;
-    REQUIRE(a >= d);
-    REQUIRE(a <= b);
 }
 
 void

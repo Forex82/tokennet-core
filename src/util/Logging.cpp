@@ -22,7 +22,7 @@ namespace stellar
 namespace
 {
 
-static const std::vector<std::string> loggers = {
+static const std::vector<std::string> kLoggers = {
     "Fs",      "SCP",    "Bucket", "Database", "History", "Process",  "Ledger",
     "Overlay", "Herder", "Tx",     "LoadGen",  "Work",    "Invariant"};
 }
@@ -37,8 +37,9 @@ Logging::setFmt(std::string const& peerID, bool timestamps)
     {
         datetime = "%datetime{%Y-%M-%dT%H:%m:%s.%g}";
     }
-    std::string shortFmt = datetime + " " + peerID + " [%logger %level] %msg";
-    std::string longFmt = shortFmt + " [%fbase:%line]";
+    const std::string shortFmt =
+        datetime + " " + peerID + " [%logger %level] %msg";
+    const std::string longFmt = shortFmt + " [%fbase:%line]";
 
     gDefaultConf.setGlobally(el::ConfigurationType::Format, shortFmt);
     gDefaultConf.set(el::Level::Error, el::ConfigurationType::Format, longFmt);
@@ -53,7 +54,7 @@ Logging::init()
     // el::Loggers::addFlag(el::LoggingFlag::HierarchicalLogging);
     el::Loggers::addFlag(el::LoggingFlag::DisableApplicationAbortOnFatalLog);
 
-    for (auto const& logger : loggers)
+    for (auto const& logger : kLoggers)
     {
         el::Loggers::getLogger(logger);
     }
@@ -223,7 +224,7 @@ void
 Logging::rotate()
 {
     el::Loggers::getLogger("default")->reconfigure();
-    for (auto const& logger : loggers)
+    for (auto const& logger : kLoggers)
     {
         el::Loggers::getLogger(logger)->reconfigure();
     }

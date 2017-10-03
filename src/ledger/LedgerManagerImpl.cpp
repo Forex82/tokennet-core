@@ -17,7 +17,7 @@
 #include "herder/TxSetFrame.h"
 #include "history/HistoryManager.h"
 #include "invariant/InvariantDoesNotHold.h"
-#include "invariant/Invariants.h"
+#include "invariant/InvariantManager.h"
 #include "ledger/LedgerDelta.h"
 #include "ledger/LedgerHeaderFrame.h"
 #include "main/Application.h"
@@ -137,7 +137,7 @@ LedgerManagerImpl::setState(State s)
                              << getStateHuman();
         if (mState != LM_CATCHING_UP_STATE)
         {
-            mApp.getHistoryManager().logAndUpdateStatus(true);
+            mApp.getCatchupManager().logAndUpdateCatchupStatus(true);
         }
     }
 }
@@ -157,7 +157,8 @@ LedgerManagerImpl::getStateHuman() const
 }
 
 void
-LedgerManagerImpl::startNewLedger(int64_t balance, uint32_t baseFee, uint32_t baseReserve, uint32_t maxTxSetSize)
+LedgerManagerImpl::startNewLedger(int64_t balance, uint32_t baseFee,
+                                  uint32_t baseReserve, uint32_t maxTxSetSize)
 {
     DBTimeExcluder qtExclude(mApp);
     auto ledgerTime = mLedgerClose.TimeScope();
@@ -188,7 +189,7 @@ LedgerManagerImpl::startNewLedger(int64_t balance, uint32_t baseFee, uint32_t ba
 void
 LedgerManagerImpl::startNewLedger()
 {
-     // 100 tx/ledger max
+    // 100 tx/ledger max
     startNewLedger(1000000000000000000, 100, 100000000, 100);
 }
 
@@ -276,7 +277,7 @@ LedgerManagerImpl::getDatabase()
     return mApp.getDatabase();
 }
 
-int64_t
+uint32_t
 LedgerManagerImpl::getTxFee() const
 {
     return mCurrentLedger->mHeader.baseFee;
@@ -417,7 +418,7 @@ LedgerManagerImpl::valueExternalized(LedgerCloseData const& ledgerData)
         case SyncingLedgerChainAddResult::CONTIGUOUS:
             // Normal close while catching up
             mSyncingLedgersSize.set_count(mSyncingLedgers.size());
-            mApp.getHistoryManager().logAndUpdateStatus(true);
+            mApp.getCatchupManager().logAndUpdateCatchupStatus(true);
             break;
         case SyncingLedgerChainAddResult::TOO_OLD:
             CLOG(INFO, "Ledger") << "Skipping close ledger: latest known is "
@@ -435,7 +436,7 @@ LedgerManagerImpl::valueExternalized(LedgerCloseData const& ledgerData)
             CLOG(WARNING, "Ledger")
                 << "this round of catchup will fail and restart.";
 
-            mApp.getHistoryManager().logAndUpdateStatus(false);
+            mApp.getCatchupManager().logAndUpdateCatchupStatus(false);
             break;
         }
     }
@@ -462,12 +463,16 @@ HistoryManager::VerifyHashStatus
 LedgerManagerImpl::verifyCatchupCandidate(
     LedgerHeaderHistoryEntry const& candidate) const
 {
-// This is a callback from CatchupStateMachine when it's considering whether
-// to treat a retrieved history block as legitimate. It asks LedgerManagerImpl
-// if it's seen (in its previous, current, or buffer of ledgers-to-close that
-// have queued up since catchup began) whether it believes the candidate is a
-// legitimate part of history. LedgerManagerImpl is allowed to answer "unknown"
-// here, which causes CatchupStateMachine to pause and retry later.
+    // This is a callback from CatchupStateMachine when it's considering whether
+    // to treat a retrieved history block as legitimate. It asks
+    // LedgerManagerImpl
+    // if it's seen (in its previous, current, or buffer of ledgers-to-close
+    // that
+    // have queued up since catchup began) whether it believes the candidate is
+    // a
+    // legitimate part of history. LedgerManagerImpl is allowed to answer
+    // "unknown"
+    // here, which causes CatchupStateMachine to pause and retry later.
 
     struct LedgerInfo
     {
@@ -476,8 +481,8 @@ LedgerManagerImpl::verifyCatchupCandidate(
     };
 
     auto infos = std::vector<LedgerInfo>{};
-    infos.push_back(LedgerInfo{mLastClosedLedger.header.ledgerSeq,
-                               mLastClosedLedger.hash});
+    infos.push_back(
+        LedgerInfo{mLastClosedLedger.header.ledgerSeq, mLastClosedLedger.hash});
     infos.push_back(LedgerInfo{mLastClosedLedger.header.ledgerSeq - 1,
                                mLastClosedLedger.header.previousLedgerHash});
     infos.push_back(LedgerInfo{mCurrentLedger->mHeader.ledgerSeq - 1,
@@ -491,9 +496,9 @@ LedgerManagerImpl::verifyCatchupCandidate(
 
     auto matchingSequenceId =
         std::find_if(std::begin(infos), std::end(infos),
-                     [&candidate](LedgerInfo const& info){
+                     [&candidate](LedgerInfo const& info) {
                          return info.seq == candidate.header.ledgerSeq;
-                    });
+                     });
     if (matchingSequenceId == std::end(infos))
     {
         if (mSyncingLedgers.hadTooNew())
@@ -526,6 +531,7 @@ LedgerManagerImpl::historyCaughtup(asio::error_code const& ec,
         CLOG(ERROR, "Ledger") << "Error catching up: " << ec.message();
         CLOG(ERROR, "Ledger") << "Catchup will restart at next close.";
         setState(LM_BOOTING_STATE);
+        mApp.getCatchupManager().historyCaughtup();
     }
     else
     {
@@ -561,6 +567,7 @@ LedgerManagerImpl::historyCaughtup(asio::error_code const& ec,
 
         CLOG(INFO, "Ledger") << "Caught up to LCL from history: "
                              << ledgerAbbrev(mLastClosedLedger);
+        mApp.getCatchupManager().historyCaughtup();
 
         // Now replay remaining txs from buffered local network history.
         for (auto const& lcd : mSyncingLedgers)
@@ -765,7 +772,8 @@ LedgerManagerImpl::closeLedger(LedgerCloseData const& ledgerData)
         }
     }
 
-    mApp.getInvariants().check(ledgerData.getTxSet(), ledgerDelta);
+    mApp.getInvariantManager().checkOnLedgerClose(ledgerData.getTxSet(),
+                                                  ledgerDelta);
 
     ledgerDelta.commit();
     ledgerClosed(ledgerDelta);
@@ -797,7 +805,7 @@ LedgerManagerImpl::closeLedger(LedgerCloseData const& ledgerData)
 
     // step 3
     hm.publishQueuedHistory();
-    hm.logAndUpdateStatus(true);
+    hm.logAndUpdatePublishStatus();
 
     // step 4
     if (getState() != LM_CATCHING_UP_STATE)
@@ -949,7 +957,7 @@ LedgerManagerImpl::applyTransactions(std::vector<TransactionFramePtr>& txs,
                 assert(delta.getHeader() == ledgerDelta.getHeader());
             }
         }
-        catch (InvariantDoesNotHold &e)
+        catch (InvariantDoesNotHold& e)
         {
             throw e;
         }
