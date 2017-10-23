@@ -144,6 +144,11 @@ class AccountFrame : public EntryFrame
         std::function<bool(InflationVotes const&)> inflationProcessor,
         int maxWinners, Database& db);
 
+    static void processForCommonBudgetInflation(
+        std::function<bool(InflationVotes const&)> inflationProcessor,
+        int minBalance, std::string excludedAccounts,
+        int maxWinners, Database& db);
+
     // loads all accounts from database and checks for consistency (slow!)
     static std::unordered_map<AccountID, AccountFrame::pointer>
     checkDB(Database& db);

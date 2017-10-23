@@ -187,6 +187,12 @@ class Config : public std::enable_shared_from_this<Config>
     uint32_t BASE_RESERVE;
     uint32_t MAX_TX_SET_SIZE;
 
+    // Common Budget Account config
+    std::string COMMON_BUDGET_ACCOUNT_ID;
+    uint64_t COMMON_BUDGET_INFLATION_MIN_BALANCE;
+    uint32_t COMMON_BUDGET_INFLATION_MAX_ACCOUNTS;
+    std::vector<std::string> COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS;
+
     Config();
 
     void load(std::string const& filename);

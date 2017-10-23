@@ -631,6 +631,40 @@ AccountFrame::processForInflation(
     }
 }
 
+void
+AccountFrame::processForCommonBudgetInflation(
+    std::function<bool(AccountFrame::InflationVotes const&)> inflationProcessor,
+    int minBalance, std::string excludedAccounts,
+    int maxWinners, Database& db)
+{
+    soci::session& session = db.getSession();
+
+    InflationVotes v;
+    std::string inflationDest;
+
+    soci::statement st =
+        (session.prepare
+             << "SELECT"
+                " balance, accountid FROM accounts WHERE"
+                " balance >= :min"
+                " AND accountid not in (:exc)"
+                " ORDER BY balance DESC LIMIT :lim",
+         into(v.mVotes), into(inflationDest),
+         use(minBalance), use(excludedAccounts), use(maxWinners));
+
+    st.execute(true);
+
+    while (st.got_data())
+    {
+        v.mInflationDest = KeyUtils::fromStrKey<PublicKey>(inflationDest);
+        if (!inflationProcessor(v))
+        {
+            break;
+        }
+        st.fetch();
+    }
+}
+
 std::unordered_map<AccountID, AccountFrame::pointer>
 AccountFrame::checkDB(Database& db)
 {

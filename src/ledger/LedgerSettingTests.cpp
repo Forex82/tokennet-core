@@ -1,3 +1,4 @@
+#include "ledger/AccountFrame.h"
 #include "ledger/LedgerManager.h"
 #include "lib/catch.hpp"
 #include "main/Application.h"
@@ -18,7 +19,7 @@ typedef std::unique_ptr<Application> appPtr;
 
 TEST_CASE("ledgerSetting","[ledgerSetting]")
 {
-    std::string cfgFile("docs/stellar-core_example2.cfg");
+    std::string cfgFile("docs/tokennet_single_node_test.cfg");
     Config cfg;
     cfg.load(cfgFile);
 
@@ -38,4 +39,9 @@ TEST_CASE("ledgerSetting","[ledgerSetting]")
     REQUIRE(baseFee == cfg.BASE_FEE);
     REQUIRE(baseReserve == cfg.BASE_RESERVE);
     REQUIRE(maxTxSetSize == cfg.MAX_TX_SET_SIZE);
+
+    AccountID aid(KeyUtils::fromStrKey<PublicKey>(cfg.COMMON_BUDGET_ACCOUNT_ID));
+    auto commonBudgetAccount = loadAccount(aid, app);
+    REQUIRE(KeyUtils::toStrKey(aid) == cfg.COMMON_BUDGET_ACCOUNT_ID);
+    REQUIRE(commonBudgetAccount->getBalance() == 0);
 }

@@ -69,11 +69,16 @@ Config::Config() : NODE_SEED(SecretKey::random())
     DATABASE = SecretValue{"sqlite3://:memory:"};
     NTP_SERVER = "pool.ntp.org";
     
-    // Ledger Manager Setting
+    // Ledger Manager onfig
     BALANCE = 1000000000000000000;
     BASE_FEE = 100;
     BASE_RESERVE = 100000000;
     MAX_TX_SET_SIZE = 100;
+
+    // Common Budget Account config
+    COMMON_BUDGET_ACCOUNT_ID = "";
+    COMMON_BUDGET_INFLATION_MIN_BALANCE = 10000;
+    COMMON_BUDGET_INFLATION_MAX_ACCOUNTS = 2000;
 }
 
 void
@@ -618,7 +623,7 @@ Config::load(std::string const& filename)
                     INVARIANT_CHECKS.push_back(v->as<std::string>()->value());
                 }
             }
-            // Add Ledger Manager Settig
+            // Ledger Manager config
             else if (item.first == "BALANCE")
             {
                 if (!item.second->as<int64_t>())
@@ -671,6 +676,45 @@ Config::load(std::string const& filename)
                 }
                 MAX_TX_SET_SIZE = (uint32_t)f;
             }
+            // Common Budget Account config
+            else if (item.first == "COMMON_BUDGET_ACCOUNT_ID")
+            {
+                if (!item.second->as<std::string>())
+                {
+                    throw std::invalid_argument("invalid COMMON_BUDGET_ACCOUNT_ID");
+                }
+                COMMON_BUDGET_ACCOUNT_ID = item.second->as<std::string>()->value();
+            }
+            else if (item.first == "COMMON_BUDGET_INFLATION_MIN_BALANCE")
+            {
+                if (!item.second->as<int64_t>())
+                {
+                    throw std::invalid_argument("invalid COMMON_BUDGET_INFLATION_MIN_BALANCE: 1");
+                }
+                int64_t f = item.second->as<int64_t>()->value();
+                if (f < 0 || f >= UINT64_MAX)
+                {
+                    throw std::invalid_argument("invalid COMMON_BUDGET_INFLATION_MIN_BALANCE: 2");
+                }
+                BALANCE = (uint64_t)f;
+            }
+            else if (item.first == "COMMON_BUDGET_INFLATION_MAX_ACCOUNTS")
+            {
+                if (!item.second->as<int64_t>())
+                {
+                    throw std::invalid_argument("invalid COMMON_BUDGET_INFLATION_MAX_ACCOUNTS");
+                }
+                int64_t f = item.second->as<int64_t>()->value();
+                if (f < 0 || f >= UINT32_MAX)
+                {
+                    throw std::invalid_argument("invalid COMMON_BUDGET_INFLATION_MAX_ACCOUNTS");
+                }
+                COMMON_BUDGET_INFLATION_MAX_ACCOUNTS = (uint32_t)f;
+            }
+            else if (item.first == "COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS")
+            {
+                // handled below
+            }
             else
             {
                 std::string err("Unknown configuration entry: '");
@@ -709,6 +753,31 @@ Config::load(std::string const& filename)
             if (qset)
             {
                 loadQset(qset->as_group(), QUORUM_SET, 0);
+            }
+        }
+        if (g.contains("COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS"))
+        {
+            auto cnodes = g.get("COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS");
+            if (cnodes)
+            {
+                if (!cnodes->is_array())
+                {
+                    throw std::invalid_argument(
+                        "COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS must be an array");
+                }
+                for (auto v : cnodes->as_array()->array())
+                {
+                    if (!v->as<std::string>())
+                    {
+                        throw std::invalid_argument(
+                            "invalid element of COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS");
+                    }
+                    PublicKey nodeID;
+                    parseNodeID(v->as<std::string>()->value(), nodeID);
+                    COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS.push_back(KeyUtils::toStrKey(nodeID));
+                    LOG(INFO) << "COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS" 
+                        << KeyUtils::toStrKey(nodeID);
+                }
             }
         }
 

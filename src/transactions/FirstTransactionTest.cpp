@@ -18,7 +18,7 @@ typedef std::unique_ptr<Application> appPtr;
 
 TEST_CASE("firstTransaction","[FirstTransaction]")
 {
-    std::string cfgFile("docs/stellar-core_example2.cfg");
+    std::string cfgFile("docs/tokennet_single_node_test.cfg");
     Config cfg;
     cfg.load(cfgFile);
 

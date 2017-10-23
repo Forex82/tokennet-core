@@ -158,6 +158,47 @@ LedgerManagerImpl::getStateHuman() const
 
 void
 LedgerManagerImpl::startNewLedger(int64_t balance, uint32_t baseFee,
+                                  uint32_t baseReserve, uint32_t maxTxSetSize,
+				  std::string commonBudgetAccountID)
+{
+    DBTimeExcluder qtExclude(mApp);
+    auto ledgerTime = mLedgerClose.TimeScope();
+    SecretKey skey = SecretKey::fromSeed(mApp.getNetworkID());
+
+    AccountFrame masterAccount(skey.getPublicKey());
+    masterAccount.getAccount().balance = balance;
+    LedgerHeader genesisHeader;
+
+    // all fields are initialized by default to 0
+    // set the ones that are not 0
+    genesisHeader.baseFee = baseFee;
+    genesisHeader.baseReserve = baseReserve;
+    genesisHeader.maxTxSetSize = maxTxSetSize;
+    genesisHeader.totalCoins = masterAccount.getAccount().balance;
+    genesisHeader.ledgerSeq = 1;
+
+    LedgerDelta delta(genesisHeader, getDatabase());
+    masterAccount.storeAdd(delta, this->getDatabase());
+     if (commonBudgetAccountID.length() != 0 && commonBudgetAccountID != "")
+    {
+        AccountID aid(KeyUtils::fromStrKey<PublicKey>(commonBudgetAccountID));
+	AccountFrame::pointer commomBudgetAccount =
+	std::make_shared<AccountFrame>(aid);
+	commomBudgetAccount->getAccount().seqNum =
+	delta.getHeaderFrame().getStartingSequenceNumber();
+	commomBudgetAccount->getAccount().balance = 0;
+	commomBudgetAccount->storeAdd(delta, this->getDatabase());
+    }
+    delta.commit();
+
+    mCurrentLedger = make_shared<LedgerHeaderFrame>(genesisHeader);
+    CLOG(INFO, "Ledger") << "Established genesis ledger, closing";
+    CLOG(INFO, "Ledger") << "Root account seed: " << skey.getStrKeySeed().value;
+    ledgerClosed(delta);
+}
+
+void
+LedgerManagerImpl::startNewLedger(int64_t balance, uint32_t baseFee,
                                   uint32_t baseReserve, uint32_t maxTxSetSize)
 {
     DBTimeExcluder qtExclude(mApp);
@@ -189,7 +230,8 @@ LedgerManagerImpl::startNewLedger(int64_t balance, uint32_t baseFee,
 void
 LedgerManagerImpl::startNewLedger(Config cfg)
 {
-    startNewLedger(cfg.BALANCE, cfg.BASE_FEE, cfg.BASE_RESERVE, cfg.MAX_TX_SET_SIZE);
+    startNewLedger(cfg.BALANCE, cfg.BASE_FEE, cfg.BASE_RESERVE, cfg.MAX_TX_SET_SIZE,
+		    cfg.COMMON_BUDGET_ACCOUNT_ID);
 }
 
 void

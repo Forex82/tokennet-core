@@ -31,6 +31,21 @@ bool
 InflationOpFrame::doApply(Application& app, LedgerDelta& delta,
                           LedgerManager& ledgerManager)
 {
+    InflationResult& innerResult = getInnerResult();
+    if (app.getConfig().COMMON_BUDGET_ACCOUNT_ID == "")
+    {
+        return origInflationOpFrame(app, delta, ledgerManager, innerResult);
+    }
+    else
+    {
+        return commonBudgetInflationOpFrame(app, delta, ledgerManager, innerResult);
+    }
+}
+
+bool
+InflationOpFrame::origInflationOpFrame(Application& app, LedgerDelta& delta,
+                          LedgerManager& ledgerManager, InflationResult& innerResult)
+{
     LedgerDelta inflationDelta(delta);
 
     auto& lcl = inflationDelta.getHeader();
@@ -44,7 +59,7 @@ InflationOpFrame::doApply(Application& app, LedgerDelta& delta,
         app.getMetrics()
             .NewMeter({"op-inflation", "failure", "not-time"}, "operation")
             .Mark();
-        innerResult().code(INFLATION_NOT_TIME);
+        innerResult.code(INFLATION_NOT_TIME);
         return false;
     }
 
@@ -75,16 +90,135 @@ InflationOpFrame::doApply(Application& app, LedgerDelta& delta,
         },
         INFLATION_NUM_WINNERS, db);
 
-    auto inflationAmount = bigDivide(lcl.totalCoins, INFLATION_RATE_TRILLIONTHS,
-                                     TRILLION, ROUND_DOWN);
+   auto inflationAmount = bigDivide(lcl.totalCoins, INFLATION_RATE_TRILLIONTHS,
+                                    TRILLION, ROUND_DOWN);
     auto amountToDole = inflationAmount + lcl.feePool;
 
     lcl.feePool = 0;
     lcl.inflationSeq++;
 
     // now credit each account
-    innerResult().code(INFLATION_SUCCESS);
-    auto& payouts = innerResult().payouts();
+    innerResult.code(INFLATION_SUCCESS);
+    auto& payouts = innerResult.payouts();
+
+    int64 leftAfterDole = amountToDole;
+
+    for (auto const& w : winners)
+    {
+        AccountFrame::pointer winner;
+
+        int64 toDoleThisWinner =
+            bigDivide(amountToDole, w.mVotes, totalVotes, ROUND_DOWN);
+
+        if (toDoleThisWinner == 0)
+            continue;
+
+        winner =
+            AccountFrame::loadAccount(inflationDelta, w.mInflationDest, db);
+
+        if (winner)
+        {
+            leftAfterDole -= toDoleThisWinner;
+            if (ledgerManager.getCurrentLedgerVersion() <= 7)
+            {
+                lcl.totalCoins += toDoleThisWinner;
+            }
+            if (!winner->addBalance(toDoleThisWinner))
+            {
+                throw std::runtime_error(
+                    "inflation overflowed destination balance");
+            }
+            winner->storeChange(inflationDelta, db);
+            payouts.emplace_back(w.mInflationDest, toDoleThisWinner);
+        }
+    }
+
+    // put back in fee pool as unclaimed funds
+    lcl.feePool += leftAfterDole;
+    if (ledgerManager.getCurrentLedgerVersion() > 7)
+    {
+        lcl.totalCoins += inflationAmount;
+    }
+
+    inflationDelta.commit();
+
+    app.getMetrics()
+        .NewMeter({"op-inflation", "success", "apply"}, "operation")
+        .Mark();
+    return true;
+}
+
+
+bool
+InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& delta,
+                          LedgerManager& ledgerManager, InflationResult& innerResult)
+{
+    LedgerDelta inflationDelta(delta);
+
+    auto& lcl = inflationDelta.getHeader();
+
+    time_t closeTime = lcl.scpValue.closeTime;
+    uint64_t seq = lcl.inflationSeq;
+
+    time_t inflationTime = (INFLATION_START_TIME + seq * INFLATION_FREQUENCY);
+    if (closeTime < inflationTime)
+    {
+        app.getMetrics()
+            .NewMeter({"op-inflation", "failure", "not-time"}, "operation")
+            .Mark();
+        innerResult.code(INFLATION_NOT_TIME);
+        return false;
+    }
+
+    int64_t totalVotes = lcl.totalCoins;
+    int64_t minBalance = app.getConfig().COMMON_BUDGET_INFLATION_MIN_BALANCE;
+    int32_t maxWinners = app.getConfig().COMMON_BUDGET_INFLATION_MAX_ACCOUNTS;
+    std::string excludedAccounts;
+    for (auto const& aid: app.getConfig().COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS)
+    {
+        excludedAccounts += "\'" + aid + "\', ";
+    }
+    excludedAccounts = excludedAccounts.substr(excludedAccounts.length() - 2, 2);
+
+    std::vector<AccountFrame::InflationVotes> winners;
+    auto& db = ledgerManager.getDatabase();
+
+    AccountFrame::processForCommonBudgetInflation(
+        [&](AccountFrame::InflationVotes const& votes) {
+            if (votes.mVotes >= minBalance)
+            {
+                winners.push_back(votes);
+                return true;
+            }
+            return false;
+        },
+        minBalance, excludedAccounts, maxWinners, db);
+
+    auto inflationAmount = 0;
+    auto amountToCommon = lcl.feePool * 0.3;
+    auto amountToDole = lcl.feePool - amountToCommon;
+
+    lcl.feePool = 0;
+    lcl.inflationSeq++;
+
+    // now credit each account
+    innerResult.code(INFLATION_SUCCESS);
+    auto& payouts = innerResult.payouts();
+
+    AccountFrame::pointer common;
+    AccountID cid(KeyUtils::fromStrKey<PublicKey>(app.getConfig().COMMON_BUDGET_ACCOUNT_ID)); 
+    common =
+        AccountFrame::loadAccount(inflationDelta, cid, db);
+    if (common)
+    {
+        if (common->addBalance(amountToCommon))
+	{
+	    throw std::runtime_error(
+	        "inflation overflowed common budget account balance");
+	}
+        common->storeChange(inflationDelta, db);
+        payouts.emplace_back(cid, amountToCommon);
+    }
 
     int64 leftAfterDole = amountToDole;
 
@@ -143,5 +277,11 @@ ThresholdLevel
 InflationOpFrame::getThresholdLevel() const
 {
     return ThresholdLevel::LOW;
+}
+
+InflationResult&
+InflationOpFrame::getInnerResult()
+{
+    return innerResult();
 }
 }

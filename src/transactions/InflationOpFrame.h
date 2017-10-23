@@ -18,12 +18,16 @@ class InflationOpFrame : public OperationFrame
 
     ThresholdLevel getThresholdLevel() const override;
 
+    InflationResult& getInnerResult();
   public:
     InflationOpFrame(Operation const& op, OperationResult& res,
                      TransactionFrame& parentTx);
-
     bool doApply(Application& app, LedgerDelta& delta,
                  LedgerManager& ledgerManager) override;
+    bool origInflationOpFrame(Application& app, LedgerDelta& delta,
+                              LedgerManager& ledgerManager, InflationResult& innerResult);
+    bool commonBudgetInflationOpFrame(Application& app, LedgerDelta& delta,
+                                      LedgerManager& ledgerManager, InflationResult& innerResult);
     bool doCheckValid(Application& app) override;
 
     static InflationResultCode
