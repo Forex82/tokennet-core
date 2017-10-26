@@ -647,10 +647,10 @@ AccountFrame::processForCommonBudgetInflation(
              << "SELECT"
                 " balance, accountid FROM accounts WHERE"
                 " balance >= :min"
-                " AND accountid not in (:exc)"
+                " AND accountid not in (" << excludedAccounts << ")"
                 " ORDER BY balance DESC LIMIT :lim",
          into(v.mVotes), into(inflationDest),
-         use(minBalance), use(excludedAccounts), use(maxWinners));
+         use(minBalance), use(maxWinners));
 
     st.execute(true);
 

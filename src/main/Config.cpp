@@ -623,7 +623,6 @@ Config::load(std::string const& filename)
                     INVARIANT_CHECKS.push_back(v->as<std::string>()->value());
                 }
             }
-            // Ledger Manager config
             else if (item.first == "BALANCE")
             {
                 if (!item.second->as<int64_t>())
@@ -676,7 +675,6 @@ Config::load(std::string const& filename)
                 }
                 MAX_TX_SET_SIZE = (uint32_t)f;
             }
-            // Common Budget Account config
             else if (item.first == "COMMON_BUDGET_ACCOUNT_ID")
             {
                 if (!item.second->as<std::string>())
@@ -696,7 +694,7 @@ Config::load(std::string const& filename)
                 {
                     throw std::invalid_argument("invalid COMMON_BUDGET_INFLATION_MIN_BALANCE: 2");
                 }
-                BALANCE = (uint64_t)f;
+                COMMON_BUDGET_INFLATION_MIN_BALANCE = (uint64_t)f;
             }
             else if (item.first == "COMMON_BUDGET_INFLATION_MAX_ACCOUNTS")
             {
@@ -713,7 +711,20 @@ Config::load(std::string const& filename)
             }
             else if (item.first == "COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS")
             {
-                // handled below
+                if (!item.second->is_array())
+                {
+                    throw std::invalid_argument(
+                        "COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS must be an array");
+                }
+                for (auto v : item.second->as_array()->array())
+                {
+                    if (!v->as<std::string>())
+                    {
+                        throw std::invalid_argument(
+                            "COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS invalid element of ");
+                    }
+                    COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS.push_back(v->as<std::string>()->value());
+                }
             }
             else
             {
@@ -755,32 +766,6 @@ Config::load(std::string const& filename)
                 loadQset(qset->as_group(), QUORUM_SET, 0);
             }
         }
-        if (g.contains("COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS"))
-        {
-            auto cnodes = g.get("COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS");
-            if (cnodes)
-            {
-                if (!cnodes->is_array())
-                {
-                    throw std::invalid_argument(
-                        "COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS must be an array");
-                }
-                for (auto v : cnodes->as_array()->array())
-                {
-                    if (!v->as<std::string>())
-                    {
-                        throw std::invalid_argument(
-                            "invalid element of COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS");
-                    }
-                    PublicKey nodeID;
-                    parseNodeID(v->as<std::string>()->value(), nodeID);
-                    COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS.push_back(KeyUtils::toStrKey(nodeID));
-                    LOG(INFO) << "COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS" 
-                        << KeyUtils::toStrKey(nodeID);
-                }
-            }
-        }
-
         validateConfig();
     }
     catch (cpptoml::toml_parse_exception& ex)

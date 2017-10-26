@@ -170,18 +170,25 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
         return false;
     }
 
-    int64_t totalVotes = lcl.totalCoins;
+    int64_t totalVotes = lcl.totalCoins - lcl.feePool; 
     int64_t minBalance = app.getConfig().COMMON_BUDGET_INFLATION_MIN_BALANCE;
     int32_t maxWinners = app.getConfig().COMMON_BUDGET_INFLATION_MAX_ACCOUNTS;
     std::string excludedAccounts;
-    for (auto const& aid: app.getConfig().COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS)
+   auto& db = ledgerManager.getDatabase();
+    for (auto const& a: app.getConfig().COMMON_BUDGET_INFLATION_EXCLUDED_ACCOUNTS)
     {
-        excludedAccounts += "\'" + aid + "\', ";
+        excludedAccounts += "\'" + a + "\', ";
+
+        AccountID aid(KeyUtils::fromStrKey<PublicKey>(a));
+        auto ea = AccountFrame::loadAccount(inflationDelta, aid, db);
+        if (ea != nullptr)
+        {
+            totalVotes -= ea->getBalance();
+        }
     }
-    excludedAccounts = excludedAccounts.substr(excludedAccounts.length() - 2, 2);
+    excludedAccounts = excludedAccounts.substr(0, excludedAccounts.length() - 2);
 
     std::vector<AccountFrame::InflationVotes> winners;
-    auto& db = ledgerManager.getDatabase();
 
     AccountFrame::processForCommonBudgetInflation(
         [&](AccountFrame::InflationVotes const& votes) {
@@ -195,32 +202,15 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
         minBalance, excludedAccounts, maxWinners, db);
 
     auto inflationAmount = 0;
-    auto amountToCommon = lcl.feePool * 0.3;
-    auto amountToDole = lcl.feePool - amountToCommon;
+    auto amountToDole = lcl.feePool * 7 / 10;
 
+    int64 leftAfterDole = lcl.feePool;
     lcl.feePool = 0;
     lcl.inflationSeq++;
 
     // now credit each account
     innerResult.code(INFLATION_SUCCESS);
     auto& payouts = innerResult.payouts();
-
-    AccountFrame::pointer common;
-    AccountID cid(KeyUtils::fromStrKey<PublicKey>(app.getConfig().COMMON_BUDGET_ACCOUNT_ID)); 
-    common =
-        AccountFrame::loadAccount(inflationDelta, cid, db);
-    if (common)
-    {
-        if (common->addBalance(amountToCommon))
-	{
-	    throw std::runtime_error(
-	        "inflation overflowed common budget account balance");
-	}
-        common->storeChange(inflationDelta, db);
-        payouts.emplace_back(cid, amountToCommon);
-    }
-
-    int64 leftAfterDole = amountToDole;
 
     for (auto const& w : winners)
     {
@@ -252,8 +242,23 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
         }
     }
 
+    AccountFrame::pointer common;
+    AccountID cid(KeyUtils::fromStrKey<PublicKey>(app.getConfig().COMMON_BUDGET_ACCOUNT_ID)); 
+    auto& db2 = ledgerManager.getDatabase();
+    common = AccountFrame::loadAccount(inflationDelta, cid, db2);
+
+    if (common)
+    {
+        if (!common->addBalance(leftAfterDole))
+	{
+	    throw std::runtime_error(
+	        "inflation overflowed common budget account balance");
+	}
+        common->storeChange(inflationDelta, db2);
+        payouts.emplace_back(cid, leftAfterDole);
+    }
+
     // put back in fee pool as unclaimed funds
-    lcl.feePool += leftAfterDole;
     if (ledgerManager.getCurrentLedgerVersion() > 7)
     {
         lcl.totalCoins += inflationAmount;
