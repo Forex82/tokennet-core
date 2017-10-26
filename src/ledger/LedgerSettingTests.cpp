@@ -41,7 +41,5 @@ TEST_CASE("ledgerSetting","[ledgerSetting]")
     REQUIRE(maxTxSetSize == cfg.MAX_TX_SET_SIZE);
 
     AccountID aid(KeyUtils::fromStrKey<PublicKey>(cfg.COMMON_BUDGET_ACCOUNT_ID));
-    auto commonBudgetAccount = loadAccount(aid, app);
     REQUIRE(KeyUtils::toStrKey(aid) == cfg.COMMON_BUDGET_ACCOUNT_ID);
-    REQUIRE(commonBudgetAccount->getBalance() == 0);
 }
