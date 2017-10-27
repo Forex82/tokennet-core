@@ -106,10 +106,10 @@ TEST_CASE("commonBudgetInflation","[CommonBudgetInflation]")
         auto minBalance = app.getLedgerManager().getMinBalance(0);
         auto rootBalance = root.getBalance();
 
-        auto a1tx = root.tx({createAccount(a1, 40000000000)});
-        auto a2tx = root.tx({createAccount(a2, 30000000000)});
-        auto a3tx = root.tx({createAccount(a3, 20000000000)});
-        auto a4tx = root.tx({createAccount(a4, 10000000000)});
+        auto a1tx = root.tx({createAccount(a1, 400000000000)});
+        auto a2tx = root.tx({createAccount(a2, 300000000000)});
+        auto a3tx = root.tx({createAccount(a3, 200000000000)});
+        auto a4tx = root.tx({createAccount(a4, 100000000000)});
 
         closeLedgerOn(app, 2, 21, 7, 2014,
                       {a1tx, a2tx, a3tx, a4tx});
@@ -142,22 +142,23 @@ TEST_CASE("commonBudgetInflation","[CommonBudgetInflation]")
 
             auto afterInflationRoot = root.getBalance();
             auto afterInflationCommon = ac.getBalance();
+            std::cout << afterInflationCommon << std::endl;
             auto afterInflationA1 = a1.getBalance();
             auto afterInflationA2 = a2.getBalance();
             auto afterInflationA3 = a3.getBalance();
             auto afterInflationA4 = a4.getBalance();
 
             REQUIRE(beforeInflationRoot == afterInflationRoot + cfg.BASE_FEE);
-            REQUIRE(beforeInflationCommon == afterInflationCommon - 
-                cfg.BASE_FEE * 6 * 3 / 10);
-            REQUIRE(beforeInflationA1 == afterInflationA1 - 
-                cfg.BASE_FEE * 6 * 7 / 10 * 4 / 10);
-            REQUIRE(beforeInflationA2 == afterInflationA2 - 
-                cfg.BASE_FEE * 6 * 7 / 10 * 3 / 10);
-            REQUIRE(beforeInflationA3 == afterInflationA3 - 
-                cfg.BASE_FEE * 6 * 7 / 10 * 2 / 10);
-            REQUIRE(beforeInflationA4 == afterInflationA4 - 
-                cfg.BASE_FEE * 6 * 7 / 10 * 1 / 10);
+            REQUIRE(beforeInflationCommon == 
+                afterInflationCommon - (cfg.BASE_FEE * 6) * 3 / 10);
+            REQUIRE(beforeInflationA1 == 
+                afterInflationA1 - (cfg.BASE_FEE * 6) * 7 / 10 * 4 / 10);
+            REQUIRE(beforeInflationA2 == 
+                afterInflationA2 - (cfg.BASE_FEE * 6) * 7 / 10 * 3 / 10);
+            REQUIRE(beforeInflationA3 == 
+                afterInflationA3 - (cfg.BASE_FEE * 6) * 7 / 10 * 2 / 10);
+            REQUIRE(beforeInflationA4 == 
+                afterInflationA4 - (cfg.BASE_FEE * 6) * 7 / 10 * 1 / 10);
 
             REQUIRE(afterInflationRoot + afterInflationCommon + 
                         afterInflationA1 + afterInflationA2 + 

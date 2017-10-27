@@ -40,6 +40,5 @@ TEST_CASE("ledgerSetting","[ledgerSetting]")
     REQUIRE(baseReserve == cfg.BASE_RESERVE);
     REQUIRE(maxTxSetSize == cfg.MAX_TX_SET_SIZE);
 
-    AccountID aid(KeyUtils::fromStrKey<PublicKey>(cfg.COMMON_BUDGET_ACCOUNT_ID));
-    REQUIRE(KeyUtils::toStrKey(aid) == cfg.COMMON_BUDGET_ACCOUNT_ID);
+    REQUIRE("GBLYZ6XVRM5B5G7DJLE3YF2SGA5JUI3KQ554MKGN4SEOGCYU6A3XUROY" == cfg.COMMON_BUDGET_ACCOUNT_ID);
 }

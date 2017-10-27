@@ -640,7 +640,7 @@ AccountFrame::processForCommonBudgetInflation(
     soci::session& session = db.getSession();
 
     InflationVotes v;
-    std::string inflationDest;
+    std::string inflationAccount;
 
     soci::statement st =
         (session.prepare
@@ -649,14 +649,14 @@ AccountFrame::processForCommonBudgetInflation(
                 " balance >= :min"
                 " AND accountid not in (" << excludedAccounts << ")"
                 " ORDER BY balance DESC LIMIT :lim",
-         into(v.mVotes), into(inflationDest),
+         into(v.mVotes), into(inflationAccount),
          use(minBalance), use(maxWinners));
 
     st.execute(true);
 
     while (st.got_data())
     {
-        v.mInflationDest = KeyUtils::fromStrKey<PublicKey>(inflationDest);
+        v.mInflationDest = KeyUtils::fromStrKey<PublicKey>(inflationAccount);
         if (!inflationProcessor(v))
         {
             break;
