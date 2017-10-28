@@ -11,7 +11,8 @@
 #include "medida/metrics_registry.h"
 #include "overlay/StellarXDR.h"
 
-const uint32_t INFLATION_FREQUENCY = (60 * 60 * 24 * 7); // every 7 days
+const uint32_t INFLATION_FREQUENCY = (60 * 5); // every 5 minutes
+// const uint32_t INFLATION_FREQUENCY = (60 * 60 * 24 * 7); // every 7 days
 // inflation is .000190721 per 7 days, or 1% a year
 const int64_t INFLATION_RATE_TRILLIONTHS = 190721000LL;
 const int64_t TRILLION = 1000000000000LL;
