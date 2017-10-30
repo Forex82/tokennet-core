@@ -181,7 +181,6 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
     int32_t maxWinners = app.getConfig().COMMON_BUDGET_INFLATION_MAX_ACCOUNTS;
     LOG(INFO) << "[Common Budget Inflation] " << "totalCoins: " << lcl.totalCoins;
     LOG(INFO) << "[Common Budget Inflation] " << "feePool: " << lcl.feePool;
-    LOG(INFO) << "[Common Budget Inflation] " << "totalVotes: " << totalVotes;
     LOG(INFO) << "[Common Budget Inflation] " << "minBalance: " << minBalance;
     LOG(INFO) << "[Common Budget Inflation] " << "maxWinnerss: " << maxWinners;
 
@@ -199,6 +198,7 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
         }
     }
     excludedAccounts = excludedAccounts.substr(0, excludedAccounts.length() - 2);
+    LOG(INFO) << "[Common Budget Inflation] " << "totalVotes: " << totalVotes;
     LOG(INFO) << "[Common Budget Inflation] " << "excluded Accounts: " << excludedAccounts;
 
     std::vector<AccountFrame::InflationVotes> winners;
