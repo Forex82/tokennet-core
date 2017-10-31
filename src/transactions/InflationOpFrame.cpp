@@ -10,6 +10,7 @@
 #include "medida/meter.h"
 #include "medida/metrics_registry.h"
 #include "overlay/StellarXDR.h"
+#include "util/Logging.h"
 
 const uint32_t INFLATION_FREQUENCY = (60 * 60 * 24 * 7); // every 7 days
 // inflation is .000190721 per 7 days, or 1% a year
@@ -170,9 +171,16 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
         return false;
     }
 
+    CLOG(INFO, "Inflation") << "=============================================================";
+    CLOG(INFO, "Inflation") << "=============================================================";
+    CLOG(INFO, "Inflation") << "[Common Budget Inflation Start]";
     int64_t totalVotes = lcl.totalCoins - lcl.feePool; 
     int64_t minBalance = app.getConfig().COMMON_BUDGET_INFLATION_MIN_BALANCE;
     int32_t maxWinners = app.getConfig().COMMON_BUDGET_INFLATION_MAX_ACCOUNTS;
+    CLOG(INFO, "Inflation")  << "totalCoins: " << lcl.totalCoins;
+    CLOG(INFO, "Inflation")  << "feePool: " << lcl.feePool;
+    CLOG(INFO, "Inflation")  << "minBalance: " << minBalance;
+    CLOG(INFO, "Inflation")  << "maxWinnerss: " << maxWinners;
 
     std::string excludedAccounts;
     auto& db = ledgerManager.getDatabase();
@@ -206,6 +214,9 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
     int64 leftAfterDole = lcl.feePool;
     lcl.feePool = 0;
 
+    CLOG(INFO, "Inflation")  << "amountToDole: " << amountToDole;
+    CLOG(INFO, "Inflation")  << "leftAfterDole: " << leftAfterDole;
+
     // now credit each account
     innerResult.code(INFLATION_SUCCESS);
     auto& payouts = innerResult.payouts();
@@ -233,6 +244,12 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
             }
             winner->storeChange(inflationDelta, db);
             payouts.emplace_back(w.mInflationDest, toDoleThisWinner);
+            CLOG(INFO, "Inflation")  << 
+                "winnerAccountID: " << KeyUtils::toStrKey(w.mInflationDest);
+             CLOG(INFO, "Inflation")  << 
+                 "toDoleThisWinner: " << toDoleThisWinner;
+             CLOG(INFO, "Inflation")  << 
+                 "leftAfterDole: " << leftAfterDole;
         }
     }
 
@@ -251,15 +268,24 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
 	}
         commonBudget->storeChange(inflationDelta, db2);
         payouts.emplace_back(cid, amountToCommonBudget);
+        CLOG(INFO, "Inflation")  <<
+            "commonBudgetAccountID: " << app.getConfig().COMMON_BUDGET_ACCOUNT_ID;
+        CLOG(INFO, "Inflation")  <<
+            "amountToCommonBudget: " << amountToCommonBudget;
     }
 
     leftAfterDole -= amountToCommonBudget;
     lcl.inflationSeq++;
     inflationDelta.commit();
+    CLOG(INFO, "Inflation")  << "leftAfterDole: " << leftAfterDole;
+    CLOG(INFO, "Inflation")  << "inflationSeq: " << lcl.inflationSeq;
 
     app.getMetrics()
         .NewMeter({"op-inflation", "success", "apply"}, "operation")
         .Mark();
+    CLOG(INFO, "Inflation") << "[Common Budget Inflation End]";
+    CLOG(INFO, "Inflation") << "=============================================================";
+    CLOG(INFO, "Inflation") << "=============================================================";
     return true;
 }
 
