@@ -171,13 +171,11 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
         return false;
     }
 
-    CLOG(INFO, "Inflation") << "=============================================================";
-    CLOG(INFO, "Inflation") << "=============================================================";
+    CLOG(INFO, "Inflation") << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>";
     CLOG(INFO, "Inflation") << "[Common Budget Inflation Start]";
     int64_t totalVotes = lcl.totalCoins - lcl.feePool; 
     int64_t minBalance = app.getConfig().COMMON_BUDGET_INFLATION_MIN_BALANCE;
     int32_t maxWinners = app.getConfig().COMMON_BUDGET_INFLATION_MAX_ACCOUNTS;
-    CLOG(INFO, "Inflation")  << "totalCoins: " << lcl.totalCoins;
     CLOG(INFO, "Inflation")  << "feePool: " << lcl.feePool;
     CLOG(INFO, "Inflation")  << "minBalance: " << minBalance;
     CLOG(INFO, "Inflation")  << "maxWinnerss: " << maxWinners;
@@ -195,6 +193,7 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
             totalVotes -= ea->getBalance();
         }
     }
+    CLOG(INFO, "Inflation")  << "totalVotes: " << totalVotes;
     excludedAccounts = excludedAccounts.substr(0, excludedAccounts.length() - 2);
 
     std::vector<AccountFrame::InflationVotes> winners;
@@ -247,6 +246,8 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
             CLOG(INFO, "Inflation")  << 
                 "winnerAccountID: " << KeyUtils::toStrKey(w.mInflationDest);
              CLOG(INFO, "Inflation")  << 
+                 "w.mVotes: " << w.mVotes;
+             CLOG(INFO, "Inflation")  << 
                  "toDoleThisWinner: " << toDoleThisWinner;
              CLOG(INFO, "Inflation")  << 
                  "leftAfterDole: " << leftAfterDole;
@@ -284,8 +285,7 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
         .NewMeter({"op-inflation", "success", "apply"}, "operation")
         .Mark();
     CLOG(INFO, "Inflation") << "[Common Budget Inflation End]";
-    CLOG(INFO, "Inflation") << "=============================================================";
-    CLOG(INFO, "Inflation") << "=============================================================";
+    CLOG(INFO, "Inflation") << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<";
     return true;
 }
 
