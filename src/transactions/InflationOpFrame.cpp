@@ -178,7 +178,7 @@ InflationOpFrame::commonBudgetInflationOpFrame(Application& app, LedgerDelta& de
     int32_t maxWinners = app.getConfig().COMMON_BUDGET_INFLATION_MAX_ACCOUNTS;
     CLOG(INFO, "Inflation")  << "feePool: " << lcl.feePool;
     CLOG(INFO, "Inflation")  << "minBalance: " << minBalance;
-    CLOG(INFO, "Inflation")  << "maxWinnerss: " << maxWinners;
+    CLOG(INFO, "Inflation")  << "maxWinners: " << maxWinners;
 
     std::string excludedAccounts;
     auto& db = ledgerManager.getDatabase();
